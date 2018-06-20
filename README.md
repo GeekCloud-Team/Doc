@@ -6,27 +6,26 @@
 
 ### 目录
 
-——————————————————————————
+#### ——————————————————————————
 
-#### [数据结构-C/C++  --- Author: Mr-Linus,SuperChenSSS ](./Data-Structure/)
+|                名称                 |         作者          |
+| :---------------------------------: | :-------------------: |
+| [数据结构-C/C++](./Data-Structure/) | Mr-Linus,SuperChenSSS |
+|     [深度学习](./DeepLearning/)     |     SuperChenSSS      |
+|         [Django](./Django/)         |       Mr-Linus        |
+|         [Docker](./Docker/)         |       Mr-Linus        |
+|         [Linux ](./Linux/)          |       Mr-Linus        |
 
-#### [深度学习   --------------------------- Author: SuperChenSSS ](./DeepLearning/)
+#### ——————————————————————————
 
-#### [Django   ------------------------------------- Author: Mr-Linus ](./Django/)
-
-#### [Docker   ------------------------------------- Author: Mr-Linus ](./Docker/)
-
-#### [Linux   -------------------------------------- Author: Mr-Linus ](./Linux/)
-
-——————————————————————————
-
-
-
-
+#### 
 
 #### 贡献要求
 
-个人原创作品，有学习价值与意义，技术要新，语言完整代码规范，使用markdown编写
+- 个人原创作品
+- 有学习价值与意义
+- 技术要新，不要照搬好几年前的老东西
+- 语言完整代码规范，使用markdown编写
 
 
 
