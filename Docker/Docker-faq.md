@@ -1,0 +1,2781 @@
+---
+title: Docker-FAQ
+date: 2018-06-15 20:43:22
+tags: docker
+---
+
+# 前言
+
+> 本FAQ基于[twang2218](https://github.com/twang2218)大佬Blog的100问制作，用于解决学习Docker出现的常见问题。
+
+
+
+# Docker 引擎相关问题 `(67)`
+
+## 概念问题 `(5)`
+
+### 宿主如果和容器系统不同的话，那不是和虚拟机一样，一层层的调用，那么 Docker 和虚拟机还有什么差别？
+
+要把 Windows 和 Linux 分清楚，更要把内核(`kernel`)和用户空间(`userland`)分清楚。
+
+容器内的进程是直接运行于`宿主内核`的，这点和宿主进程一致，只是容器的 `userland` 不同，容器的 `userland` 由容器镜像提供，也就是说镜像提供了 `rootfs`。
+
+假设宿主是 `Ubuntu`，容器是 `CentOS`。`CentOS` 容器中的进程会直接向 `Ubuntu` 宿主内核发送 `syscall`，而不会直接或间接的使用任何 `Ubuntu` 的 `userland` 的库。
+
+这点和虚拟机有本质的不同，虚拟机是虚拟环境，在现有系统上虚拟一套物理设备，然后在虚拟环境内运行一个虚拟环境的操作系统内核，在内核之上再跑完整系统，并在里面调用进程。
+
+还以上面的例子去考虑，虚拟机中，`CentOS` 的进程发送 `syscall` 内核调用，该请求会被虚拟机内的 `CentOS` 的内核接到，然后 `CentOS` 内核访问虚拟硬件时，由虚拟机的服务软件截获，并使用宿主系统，也就是 `Ubuntu` 的内核及 `userland` 的库去执行。
+
+而且，Linux 和 Windows 在这点上非常不同。Linux 的进程是直接发 `syscall` 的，而 Windows 则把 `syscall` 隐藏于一层层的 `DLL` 服务之后，因此 Windows 的任何一个进程如果要执行，不仅仅需要 Windows 内核，还需要一群服务来支撑，所以如果 Windows 要实现类似的机制，容器内将不会像 Linux 这样轻量级，而是非常臃肿。看一下微软移植的 Docker 就非常清楚了。
+
+所以不要把 Docker 和虚拟机弄混，Docker 容器只是一个进程而已，只不过利用镜像提供的 `rootfs` 提供了调用所需的 `userland` 库支持，使得进程可以在受控环境下运行而已，它并没有虚拟出一个机器出来。
+
+参考：
+
+* (英文): <https://www.docker.com/what-docker>
+* (中文): <https://www.docker-cn.com/what-docker>
+
+### Docker 资料好少啊？网上的命令怎么不能用？
+
+首先，做技术工作，请珍惜生命，远离百度；
+其次，不翻墙、不用Google、不看英文资料，那请转行，没法混。
+
+然后是回答问题，Docker的资料其实很丰富，特别是官方文档讲解非常详细。
+
+* (英文): <https://docs.docker.com/>
+* (中文): <https://docs.docker-cn.com> (文档有坑，不少代码格式有错)
+* (老麦的翻译): <https://www.gitbook.com/read/book/octowhale/docker-doc-cn>
+
+另外，Docker有丰富的镜像库，Docker Hub，特别是官方(Official)的镜像可以直接在生产环境中使用，制作比较精良。
+
+<https://hub.docker.com/explore/>
+
+所有的官方镜像都有 `Dockerfile`，以及在github上有全部生成镜像的配套文件，遵循了`Dockerfile`的最佳实践，这些也是很好地学习资料。
+
+另外，在 YouTube 的 Docker 官方频道下有几百个视频讲座，从初级到高级用户都能从里面学到很多东西。
+
+<https://www.youtube.com/user/dockerrun>
+
+### 如何选择 Docker 书籍？
+
+Docker 属于敏捷开发的产品，并且处于高速创新阶段，每年都会有很多版本发布。由于这种快速开发的特性，Docker 一般只保留几个版本内的向后兼容性，再之后就会废弃。因此选择图书的时候，**不应该选择比当前版本低超过2-3个版本的书籍**。换句话说，市面上大部分书籍，特别是中文书籍、网文，很可能都过时了。
+
+Docker 版本号在 2017 年以前，使用 `<大版本号>.<小版本号>.<补丁版本号>` 的结构，那时 Docker 基本会保持 **3 个小版本号** 之内的兼容性（如果一个特性宣布废弃，一般会在 3 个版本后才彻底移除）。
+
+而从 2017 年春以后，Docker 使用了新版本号结构：`<年>.<月>.<补丁版本号>`，并且将每月发布一个**前沿(Edge)版本**，每季度发布一个**稳定(Stable)版本**。因此选择书籍也应该以介绍 **2-3个季度以内版本** 的书籍为准。那些介绍一年以前发布的 Docker 版本的书籍不应该再看了。
+
+因此在购买 Docker 图书的时候，应该遵循这样的原则：**观察一下当前的 Docker 版本号，选择不要晚于 3 个版本的 Docker 书籍。** 比如写这段文字时为 `17.06`，那么就不要购买介绍 Docker `1.12` 及其以前版本的书籍了，否则看到的很多东西可能将会因过时而无法使用，或者已经不必如此繁琐有更简单的方式去实现了。
+
+所以，对于 Docker 学习而言，**最好的书籍是官网文档**，官网的文档很丰富。
+
+* 新手教程：
+  * （英文）：<https://docs.docker.com/get-started/>
+  * （中文）：<https://docs.docker-cn.com/get-started/>
+  * （老麦的翻译）：<https://docs-cn.docker.octowhale.com/get_started/001.Orientation.html>
+* Docker 课程：<http://training.play-with-docker.com/>
+  * 运维人员课程：<http://training.play-with-docker.com/ops-landing/>
+  * 开发人员课程：<http://training.play-with-docker.com/dev-landing/>
+* 大量的例子：
+  * （英文）：<https://docs.docker.com/samples/>
+  * （中文）：<https://docs.docker-cn.com/samples/>
+* 用户文档：
+  * （英文）：<https://docs.docker.com/engine/userguide/>
+  * （中文）：<https://docs.docker-cn.com/engine/userguide/>
+  * 镜像：
+    * (英文）：<https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/>
+    * (老麦的翻译)：<https://docs-cn.docker.octowhale.com/engine/userguide/eng-image/dockerfile_best-practices.html>
+  * 存储：<https://docs.docker.com/engine/userguide/storagedriver/>
+  * 网络：<https://docs.docker.com/engine/userguide/networking/>
+* 管理文档：<https://docs.docker.com/engine/admin/>
+  * 存储：<https://docs.docker.com/engine/admin/volumes/>
+* 安全：<https://docs.docker.com/engine/security/security/>
+* 集群：<https://docs.docker.com/engine/swarm/>
+
+> 部分文档有对应官方的中文翻译，可以从 <https://docs.docker-cn.com> 查看。但是一定要**注意代码格式**，中文文档中**许多格式是错误的**，应该对比英文文档中的代码来看。
+
+对于新手而言，应该先从新手教程开始，内容还是很简单易懂的，很容易上手。然后，可以把用户文档好好看一遍，里面把很多 Docker 的基础概念讲的很清楚。概念清晰后，可以去把官网给出的例子好好的学习一下，这些例子都是具体怎么应用 Docker 的，有文字说明以及具体的考虑，很适合学习。
+
+### 总说看官方文档，可是 Docker 官网文档经常被墙，看不了怎么办？
+
+首先*感谢*伟大的墙及其先祖。
+
+然后，我们可以本地运行 Docker 官方文档的网站，以 docker 的方式：
+
+```bash
+$ docker run -d -p 80:4000 docs/docker.github.io
+```
+
+这样访问 Docker 宿主的 `80` 端口，如 <http://localhost>，就会看到官网文档了。
+
+对于那些访问不了我的问答录的童鞋，同样可以用这样的方式来本地运行：
+
+```bash
+$ docker run -d -p 80:80 twang2218/blog.lab99.org
+```
+
+然后就可以访问本地 `80` 端口看到最新的问答录了。
+
+### Docker 1.8 以后版本都有什么改进么？
+
+每个版本发布时，官方博客 <https://blog.docker.com> 都会有专门文章描述这个版本最主要的改进。
+
+* `1.9`: <https://blog.docker.com/2015/11/docker-1-9-production-ready-swarm-multi-host-networking/>
+* `1.10`: <https://blog.docker.com/2016/02/docker-1-10/>
+* `1.11`: <https://blog.docker.com/2016/04/docker-engine-1-11-runc/>
+* `1.12`: <https://blog.docker.com/2016/06/docker-1-12-built-in-orchestration/>
+
+另外，可以看一下孙宏亮维护的[《Docker 中文 Changelog》](https://github.com/allencloud/docker-changelog-chinese)：
+
+* `1.10`: <https://github.com/allencloud/docker-changelog-chinese/blob/master/docker-1.10.0-changelog.md>
+* `1.11`: <https://github.com/allencloud/docker-changelog-chinese/blob/master/docker-1.11.0-changelog.md>
+* `1.11.1`: <https://github.com/allencloud/docker-changelog-chinese/blob/master/docker-1.11.1-changelog.md>
+* `1.12`: <https://github.com/allencloud/docker-changelog-chinese/blob/master/docker-1.12.0-changelog.md>
+
+关于 `Docker 1.13` 可以看一下我写的[《Docker 1.13 新增功能》](/post/docker-2016-11-14-what-is-new-in-docker-1-13.html)。
+
+## 安装、配置问题 `(8)`
+
+### Docker 怎么这么多软件，我该装哪个？
+
+好吧，我决定要装 Docker 了，于是来打开 [Docker 安装文档](https://docs.docker.com/engine/installation/) ([中文](https://docs.docker-cn.com/engine/installation/) 看看怎么装吧……呃，然后就傻了，怎么这么多种选择啊？！
+
+首先，Docker 有好几个*版本*，社区版（Community Edition）、企业基础版（Enterprise Edition Basic）、企业标准版（Enterprise Edition Standard）、企业高级版（Enterprise Edition Advanced）。对于我们一般学习使用而言，*使用社区版就已足够*，所以记住**CE**就可以了。
+
+其次，我们会看到一堆*平台*特定的版本，Docker for Mac、Docker for Windows、Docker Toolbox、Docker for Azure、Docker for AWS 等等，还有一堆不同 Linux 的发行版。那我们应该用哪个？其实不难选择，这都是平台特定的东西嘛，选择自己平台就完了😂：
+
+* macOS 就选择 [Docker for Mac](https://docs.docker.com/docker-for-mac/)；
+    * 阿里云（未及时更新）：https://mirrors.aliyun.com/docker-toolbox/mac/docker-for-mac/stable/
+* Linux 就选择自己平台的 Docker 源：
+    * Ubuntu: https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/
+    * Debian: https://docs.docker.com/engine/installation/linux/docker-ce/debian/
+    * CentOS: https://docs.docker.com/engine/installation/linux/docker-ce/centos/
+    * Fedora: https://docs.docker.com/engine/installation/linux/docker-ce/fedora/
+* Windows 要麻烦些：
+    * 如果是 *Windows 10* *专业版、企业版、教育版*，并且版本在 `10586` 以后，并且*不打算*在 Docker 运行*同时*再运行其它虚拟机的情况下，可以装 [Docker for Windows](https://docs.docker.com/docker-for-windows/)。
+        * 阿里云（未及时更新）：https://mirrors.aliyun.com/docker-toolbox/windows/docker-for-windows/stable/
+    * **其它情况**都装 [Docker Toolbox](https://docs.docker.com/toolbox/overview/)
+        * 阿里云：https://mirrors.aliyun.com/docker-toolbox/windows/docker-toolbox/
+* 如果是特定云服务平台，可以考虑特定服务平台的版本（当然，这不是必须）：
+    * AWS：[Docker for AWS](https://docs.docker.com/docker-for-aws/)
+    * Azure：[Docker for Azure](https://docs.docker.com/docker-for-azure/)
+
+最后是*发布通道*，从今年初开始，也就是从 `1.13` 以后，Docker 使用了新的版本号规则，将采用类似 Ubuntu 那种 `<年>.<月>` 的形式，比如 `17.03`, `17.06` 等。并且，将发布通道分为**前沿版本(Edge)**和**稳定版本(Stable)**。前沿通道将基本每个月发布一个版本，而稳定通道将基本每3个月发布一个版本。这样 Docker 的发布将有规律可寻。对于喜欢尝鲜的可以选择前沿版本，对于需要稳定的，可以选择稳定版本。
+
+> 这里面需要注意的是，在参考[官方安装文档](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/) ([中文](https://docs.docker-cn.com/engine/installation/linux/docker-ce/ubuntu/))配置 Linux 源的时候，如果是国内服务器，要将其中的 `https://download.docker.com/linux/` 替换为 `https://mirrors.aliyun.com/docker-ce/linux/`。
+
+比如，文档如果要求执行下面的命令：
+
+```bash
+$ sudo add-apt-repository \
+   "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+```
+
+那么就**替换**为：
+
+```bash
+$ sudo add-apt-repository \
+   "deb [arch=amd64] https://mirrors.aliyun.com/docker-ce/linux/ubuntu \
+   $(lsb_release -cs) \
+   stable"
+```
+
+这样安装 Docker 就会使用阿里云的软件源，而不需要翻墙了。（*注：这不是加速器，不要搞错了，加速器依旧需要配！*）
+
+### 是直接用 `yum` / `apt-get` 安装 Docker 吗？
+
+很多人问到 `docker`, `docker.io`, `docker-engine` 甚至 `lxc-docker` 都有什么区别？
+
+其中，RHEL/CentOS 软件源中的 Docker 包名为 `docker`；Ubuntu 软件源中的 Docker 包名为 `docker.io`；而很古老的 Docker 源中 Docker 也曾叫做 `lxc-docker`。这些都是`非常老旧`的 Docker 版本，并且基本不会更新到最新的版本，而对于使用 Docker 而言，使用最新版本非常重要。另外，17.04 以后，包名从 `docker-engine` 改为 `docker-ce`，因此从现在开始安装，应该都使用 `docker-ce` 这个包。
+
+> 不要使用操作系统提供的软件源中的 Docker 包，去使用 Docker 官方源的包。
+
+正确的安装方法有两种：
+
+* 一种是参考官方安装文档去配置 [apt](https://docs.docker-cn.com/engine/installation/linux/docker-ce/ubuntu/) 或者 [yum](https://docs.docker-cn.com/engine/installation/linux/docker-ce/centos/) 的源；
+* 另一种则是使用官方提供的安装脚本快速安装。
+
+官方文档对配置源的方法已经有很详细的讲解，这里就不赘述，需要的直接去看[官方文档](https://docs.docker-cn.com/engine/installation/linux/docker-ce/ubuntu/)。这里只介绍使用官方的脚本快速安装：
+
+#### 17.04 及以后的版本
+
+从 `17.04` 以后，可以用下面的命令安装。
+
+```bash
+export CHANNEL=stable
+curl -fsSL https://get.docker.com/ | sh -s -- --mirror Aliyun
+```
+
+这里使用的是官方脚本安装，通过环境变量指定安装通道为 `stable`，（如果喜欢尝鲜可以改为 `edge`, `test`），并且指定使用阿里云的源(apt/yum)来安装 Docker CE 版本。
+
+#### 17.03 及以前的版本
+
+早期的版本可以使用阿里云或者 DaoCloud 老的脚本安装：
+
+使用`阿里云`的安装脚本：
+
+```bash
+curl -sSL http://acs-public-mirror.oss-cn-hangzhou.aliyuncs.com/docker-engine/internet | sh -
+```
+
+使用`DaoCloud`的Docker安装脚本：
+
+```bash
+curl -sSL https://get.daocloud.io/docker | sh
+```
+
+### 不是都已经发布 Docker 17.07 了么？我怎么升级到最新还是 17.05 呀？
+
+从 **17.04** 以后，Docker 的源的结构以及包名都进行了调整，因此如果你你还使用的是旧的源，那么需要参照[官方文档](https://docs.docker.com/engine/installation/linux/docker-ce/ubuntu/)，更新源的地址为新的源。前面的问答中已经给出了链接和替代用的阿里云源镜像地址，参照修改（apt/yum）源。
+
+修改好后，卸载旧的 `docker-engine`，安装新的 `docker-ce` 即可。
+
+### `docker pull` 好慢啊怎么办？
+
+首先，要“感谢”伟大的墙及其亲属。
+
+然后，我们可以使用 Docker 镜像加速器来解决这个问题，加速器就是镜像、代理的概念。国内有不少机构提供了免费的加速器以方便大家使用，这里列出一些常用的加速器服务：
+
+* [Docker 官方的中国镜像加速器](https://www.docker-cn.com/registry-mirror)：从2017年6月9日起，**Docker 官方提供了在中国的加速器**，以解决墙的问题。不用注册，直接使用加速器地址：`https://registry.docker-cn.com` 即可。
+* [中国科技大学的镜像加速器](http://mirrors.ustc.edu.cn/help/dockerhub.html?highlight=docker)：中科大的加速器不用注册，直接使用地址 `https://docker.mirrors.ustc.edu.cn/` 配置加速器即可。进一步的信息可以访问：http://mirrors.ustc.edu.cn/help/dockerhub.html?highlight=docker
+* [阿里云加速器](https://cr.console.aliyun.com/#/accelerator)：注册阿里云开发账户(*免费的*)后，访问这个链接就可以看到加速器地址： <https://cr.console.aliyun.com/#/accelerator>
+* [DaoCloud 加速器](https://www.daocloud.io/mirror#accelerator-doc)：[注册 `DaoCloud` 账户](http://account.daocloud.io/signup)(*支持微信登录*)，然后访问： <https://www.daocloud.io/mirror#accelerator-doc>
+
+> 注意：**不要使用**加速器网站所给的配置脚本，容易导致错误。我们只需获取其提供的**加速器地址**即可。
+
+#### Ubuntu 14.04 配置加速器（或其它使用 Upstart 的系统）
+
+`Ubuntu 14.04` 是使用 `upstart` 进行系统初始化的，对于这类系统，可以用通过编辑配置文件的方法来配置加速器。
+
+如果是 `Ubuntu 14.04`，那么编辑 `/etc/default/docker`，在里面寻找 `DOCKER_OPTS` 环境变量设置的这一行，在其后添加 `-–registry-mirror=<加速器地址>`。如果发现该行已被注释，或者不存在该行，那么新添一行即可。
+
+比如，在使用官方源安装了 `docker-engine` 后，会建立一个默认的 `/etc/default/docker`，其中相关 `DOCKER_OPTS` 的行是这样的：
+
+```bash
+# Use DOCKER_OPTS to modify the daemon startup options.
+#DOCKER_OPTS="--dns 8.8.8.8 --dns 8.8.4.4"
+```
+
+假设我们的加速器地址为 `https://registry.docker-cn.com`，我们添加一行配置，将其改为：
+
+```bash
+# Use DOCKER_OPTS to modify the daemon startup options.
+#DOCKER_OPTS="--dns 8.8.8.8 --dns 8.8.4.4"
+DOCKER_OPTS="--registry-mirror=https://registry.docker-cn.com"
+```
+
+保存文件后，重启 Docker 引擎：
+
+```bash
+$ sudo service docker restart
+docker stop/waiting
+docker start/running, process 3620
+```
+
+重启成功后，确认一下配置是否已经生效：
+
+```bash
+$ sudo ps -ef | grep dockerd
+root      3620     1  0 04:26 ?        00:00:00 /usr/bin/dockerd --registry-mirror=https://registry.docker-cn.com --raw-logs
+```
+
+如果配置成功，生效后这里就会看到自己所配置的加速器的内容。
+
+#### Ubuntu 16.04 或 CentOS 7 配置加速器（或其它使用 Systemd 的系统）
+
+`Ubuntu 16.04` 和 `CentOS 7` 这类系统都已经开始使用 `systemd` 进行系统初始化管理了，对于使用 `systemd` 的系统，应该通过编辑服务配置文件 `docker.service` 来进行加速器的配置。
+
+在启用服务后
+
+```bash
+$ sudo systemctl enable docker
+```
+
+可以直接编辑 `/etc/systemd/system/multi-user.target.wants/docker.service` 文件来进行配置。
+
+```bash
+sudo vi /etc/systemd/system/multi-user.target.wants/docker.service
+```
+
+在文件中找到 `ExecStart=` 这一行，并且在其行尾添加上所需的配置。假设我们的加速器地址为 `https://registry.docker-cn.com`，那么可以这样配置：
+
+```Ini
+ExecStart=/usr/bin/dockerd --registry-mirror=https://registry.docker-cn.com
+```
+
+> 注: Docker 1.12 之前的版本，`dockerd` 应该换为 `docker daemon`，更早的版本则是 `docker -d`。不过还在用那些版本的童鞋，升级吧……😓
+
+保存退出后，重新加载配置并启动服务：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart docker
+```
+
+确认一下配置是否已经生效：
+
+```bash
+sudo ps -ef | grep dockerd
+```
+
+如果配置成功，生效后就会在这里看到自己所配置的加速器。
+
+在 `1.13` 版本以后，可以直接 `docker info` 查看，如果配置成功，加速器 `Registry Mirror` 会在最下面列出来。
+
+如果重启后发现无法启动 `docker` 服务，检查一下服务日志，看看是不是之前执行过那些加速器网站的脚本，如果有做过类似的事情，检查一下是不是被建立了 `/etc/docker/daemon.json` 以配置加速器，如果是的话，删掉这个文件，然后在重启服务。
+
+使用配置文件是件好事，比如修改配置不必重启服务，只需发送 `SIGHUP` 信号即可。但需要注意，目前在 `dockerd` 中使用配置文件时，无法输出当前生效配置，并且当 `dockerd` 的参数和 `daemon.json` 文件中的配置有所重复时，并不是一个优先级覆盖另一个，而是会直接导致引擎启动失败。很多人发现配了加速器后 Docker 启动不起来了就是这个原因。解决办法很简单，去掉重复项。不过在这些问题解决前，建议使用修改 `docker.service` 这类做法来实现配置，而不是使用配置文件 `daemon.json`。方便 `ps -ef | grep dockerd` 一眼看到实际配置情况。
+
+### 怎么修改了 docker 服务配置后不起作用？
+
+改动真的生效了么？在宿主上运行一下 `ps -ef | grep dockerd` 看看，自己做的那些配置有么？没有的话就说明没有生效，那么就要检查原因了。
+
+首先，改完配置重启服务了么？虽然这个问题看着很小白，但是确实很多人犯了这个小白的错误。
+
+* `Ubuntu 14.04`: `sudo service docker restart`
+* `Ubuntu 16.04`, `CentOS 7`: `sudo systemctl daemon-reload && sudo systemctl restart docker`
+
+另外，你改对了配置文件了么？
+
+不少人懒得看英文文档，*百度*个文章就照着配，既不管百度得到的文章所讲的系统，也没注意版本，而且中文文章往往自身表达描述不清楚，很多想当然的东西，结果无数坑。这么百度的人，很有可能压根就改错了文件。
+
+> 珍爱生命，远离百度。
+
+最近两年处于 `upstart` 到 `systemd` 的过渡期，所以配置服务的方式**对于不同的系统版本是不一样的**，要看看自己使用的是什么操作系统，以及什么版本。
+
+对于 `upstart` 的系统（`Ubuntu 14.10`或以前的版本，`Debian 7`或以前的版本），配置文件可能在 `/etc/default/docker`，其配置方式基本是配置 `DOCKER_*` 的环境变量。
+
+而对于 `systemd` 的系统(`Ubuntu 15.04`及以后的版本，`Debian 8`及以后的版本，`CentOS 7`/`RHEL 7`及以后的版本)，配置文件则在 `systemd` 的配置目录下。
+
+首先应该 `enable` 该服务：
+
+```bash
+sudo systemctl enable docker
+```
+
+然后修改配置文件 `/etc/systemd/system/multi-user.target.wants/docker.service` （只要服务 `enable` 了，那么不管什么系统，应该都会在这个位置看到配置文件）
+
+> 要注意 `upstart` 的服务配置文件和 `systemd` 的配置文件的格式是**不同的**，不要拿着 `upstart` 的配置行直接复制粘贴到 `systemd` 的配置文件里，两码事儿，请先学习基础知识。
+
+参考官网文档：
+<https://docs.docker.com/engine/admin/configuring/#ubuntu>
+<https://docs.docker.com/engine/admin/systemd/>
+
+### 如果 Docker 升级或者重启的话，那容器是不是都会被停掉然后重启啊？
+
+在 `1.12` 以前的版本确实如此，但是从 `1.12` 开始，Docker 引擎加入了 `--live-restore` 参数，使用该参数可以避免引擎升级、重启导致容器停止服务的情况。
+
+默认情况该功能不会被启动，如需启动，需要配置 `docker` 服务配置文件。比如 `Ubuntu 16.04` 这类 `systemd` 的系统，可以修改 `/etc/systemd/system/multi-user.target.wants/docker.service` 文件，在 `ExecStart=` 后面配置上 `--live-restore`：
+
+```bash
+ExecStart=/usr/bin/dockerd \
+    --registry-mirror=https://registry.docker-cn.com \
+    --live-restore
+```
+
+上面的格式中使用了行尾 `\` 的换行形式，这点和 `bash` 脚本一样，`systemd` 支持这种换行形式，如对此不了解可以先去学习 `bash` 程序设计。
+
+需要注意的是，`--live-restore` 和 `Swarm Mode` 不兼容，所以在集群环境中不要使用。实际上集群环境也不用担心某个服务器重启的问题，因为其上的服务都会被调度到别的节点上，因此服务并不会被中断。
+
+参考文档：
+* https://docs.docker.com/engine/admin/live-restore/
+
+### 为什么执行 docker 命令会报 `permission denied` 没权限的错误啊？
+
+在 Linux 环境下，一些新装了 docker 的用户，特别是使用了 `sudo` 命令安装好了 Docker 后，发现当前用户一执行 `docker` 命令，就会报没权限的错误：
+
+```bash
+dial unix /var/run/docker.sock: permission denied
+```
+
+一些来自于 Windows 世界的人，就会蹦出来说，用 `root` 呀……😓。而另一些有基本常识、知道不应该使用 `root` 人可能会说，那就用 `sudo docker` 吧。这两者都是不对的，或者说不合适的。
+
+说使用 `root` 的人，应该回去好好学习一下 Linux 权限常识。一般 **不应该直接使用 `root` 用户**，直接使用 `root` 用户不仅仅是严重的违反了安全规范，而且也极容易造成操作事故。这不是 Windows 世界，Linux/Unix 世界是有严格的权限要求的，只应该**使用最小的权限做事情**。如果还不熟悉 Linux 权限机制，那就去学习一下，不要把 Windows 的坏毛病带过来。
+
+说使用 `sudo docker` 的人，思路是对的，因为理解了平时操作应该使用普通用户，只有在需要的时候，才 `sudo` 提升权限进行操作。但是问题就在这个**需要**二字上，事实上，**不需要 `root` 权限就可以执行 `docker` 命令**。
+
+其实如果看过[官方安装文档](https://docs.docker.com/engine/installation/linux/linux-postinstall/#manage-docker-as-a-non-root-user)的话都会知道，只需要将操作 `docker` 的用户，加入 `docker` 组，那么该用户既拥有了操作 `docker` 的权限。
+
+因此，只需要执行：
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+就可以把当前用户加入 `docker` 组，**退出、重新登录系统后**，执行 `docker info` 看一下，就会发现可以不用 `sudo` 直接执行 `docker` 命令了。
+
+如果需要添加别的用户，将其中的 `$USER` 换成对应的用户名即可。
+
+将用户添加到 `docker` 组，可以避免 `root` 权限误操作的问题，但是由于 `dockerd` 引擎是运行在 `root` 用户下的，而 `docker` 组成员有权限指挥 `dockerd` 引擎来做很多事情，因此，该用户实际上是拥有了 `root` 的权限的。因此不要误解了将当前用户加入 `docker` 组的初衷，这和赋予用户 `sudo` 权力是一样的，可不是说这个用户就没有 `root` 权限了。这样做，只是不再需要使用 `sudo` 了，也降低了使用 `sudo` 时误操作的可能。
+
+此外，这里说的权限问题，全是指使用 `docker` 命令操作**本机** `dockerd` 引擎，也就是通过 `/var/run/docker.sock` 来操作 `dockerd` 引擎的事情，只有这种有之前说的权限类的问题。
+
+而 `docker` 命令还可以操作**远程** `dockerd` 的引擎，也就是 `-H` 参数，或者 `DOCKER_HOST` 环境变量所指定的 Docker 主机。这种情况通讯走的是网络、HTTP，不会有权限问题。所以，如果不打算操作本机的 `dockerd` 引擎，则不需要将用户加入 `docker` 组，也是可以操作远程服务器的。
+
+### 服务器上线后，怎么发现总有个 `xmrig` 的容器在跑，删了还出来，这是什么鬼？
+
+> **警告！！**你的服务器已经**被入侵了**！！
+
+有些人服务器上线后，发现突然多了一些莫名奇妙的容器在跑。比如下面这个例子：
+
+```bash
+$ docker ps
+IMAGE           COMMAND                  CREATED      STATUS                      PORTS    NAMES
+linuxrun/cpu2   "./xmrig --algo=cr...."  4 hours ago  Exited (137) 7 minutes ago           linuxrun-cpu2
+...
+```
+
+这就是有人在你的 Docker 宿主上跑了一个 `xmrig` 挖矿的蠕虫，因为你的系统**被入侵了**……😓。
+
+在你大叫 Docker 不安全之前，*先检讨一下自己*是不是做错了。检查一下 `dockerd` 引擎是否配置错误：`ps -ef | grep dockerd`，如果你看到的是这样子的：
+
+```bash
+$ ps -ef | grep dockerd
+123  root   12:34   /usr/bin/dockerd -H unix:///var/run/docker.sock -H tcp://0.0.0.0:2375
+```
+
+如果在其中没有 `--tlsverify` 类的 TLS 配置参数，那就说明你将你的系统大门彻底敞开了。这是配置上**严重的安全事故**。
+
+`-H tcp://0.0.0.0:2375` 是说你希望通过 `2375/tcp` 来操控你的 Docker 引擎，但是如果你没有加 `--tlsverify` 类的配置，就表明你的意图是**允许任何人**来操控你的 Docker 引擎，而 Docker 引擎是以 `root` 权限允许的，因此，你等于给了**地球上所有人**你服务器的 `root` 权限，而且**还没密码**。
+
+如果细心一些，去查看 `dockerd` 的服务日志，`journalctl -u docker`，日志中有明确的警告，警告你这么配置是极端危险的：
+
+```bash
+$ journalctl -u docker
+...
+level=warning msg="[!] DON'T BIND ON ANY IP ADDRESS WITHOUT setting --tlsverify IF YOU DON'T KNOW WHAT YOU'RE DOING [!]"
+...
+```
+
+如果这些你都忽略了，那么被别人入侵就太正常了，是你自己*邀请*别人来的。所以，Docker 服务绑定端口，*必须*通过 TLS 保护起来，以后见到 `-H tcp://....` 就要检查，是否同时配置了 `--tlsverify`，如果没看到，那就是严重错误了。
+
+这也是为什么推荐使用 `docker-machine` 进行 Docker 宿主管理的原因，因为 `docker-machine` 会帮你创建证书、配置 TLS，确保服务器的安全。
+
+进一步如何配置 TLS 的信息，可以查看官网文档：https://docs.docker.com/engine/security/https/
+关于 `docker-machine` 的介绍，可以看官网文档：https://docs.docker.com/machine/overview/
+
+## 网络问题 `(13)`
+
+### 怎么固定容器 IP 地址？每次重启容器都要变化 IP 地址怎么办？
+
+一般情况是不需要指定容器 IP 地址的。这不是虚拟主机，而是容器。其地址是供容器间通讯的，容器间则不用 IP 直接通讯，而使用`容器名`、`服务名`、`网络别名`。
+
+为了保持向后兼容，`docker run` 在不指定 `--network` 时，所在的网络是 `default bridge`，在这个网络下，需要使用 `--link` 参数才可以让两个容器找到对方。
+
+这是有局限性的，因为这个时候使用的是 `/etc/hosts` 静态文件来进行的解析，比如一个主机挂了后，重新启动IP可能会改变。虽然说这种改变Docker是可能更新`/etc/hosts`文件，但是这有诸多问题，可能会因为竞争冒险导致 `/etc/hosts` 文件损毁，也可能还在运行的容器在取得 `/etc/hosts` 的解析结果后，不再去监视该文件是否变动。种种原因都可能会导致旧的主机无法通过容器名访问到新的主机。
+
+参考官网文档：<https://docs.docker.com/engine/userguide/networking/default_network/dockerlinks/>
+
+如果可能不要使用这种过时的方式，而是用下面说的自定义网络的方式。
+
+而对于新的环境（Docker 1.10以上），应该给容器建立自定义网络，同一个自定义网络中，可以使用对方容器的容器名、服务名、网络别名来找到对方。这个时候帮助进行服务发现的是Docker 内置的DNS。所以，无论容器是否重启、更换IP，内置的DNS都能正确指定到对方的位置。
+
+参考官网文档：<https://docs.docker.com/engine/userguide/networking/work-with-networks/#linking-containers-in-user-defined-networks>
+
+建议参考一下我写的 LNMP 的例子：
+<https://coding.net/u/twang2218/p/docker-lnmp/git>
+
+### 如何修改容器的 `/etc/hosts` 文件？
+
+容器内的 `/etc/hosts` 文件不应该被随意修改，如果必须添加主机名和 IP 地址映射关系，应该在 `docker run` 时使用 `--add-host` 参数，或者在 `docker-compose.yml` 中添加 `extra_hosts` 项。
+
+不过在用之前，应该再考虑一下真的需要修改 `/etc/hosts` 么？如果只是为了容器间互相访问，应该建立自定义网络，并使用 Docker 内置的 DNS 服务。
+
+可以参考一下我写的这个 LNMP 多容器互连的例子：<https://coding.net/u/twang2218/p/docker-lnmp/git>
+
+### 怎么映射宿主端口？`Dockerfile` 中的`EXPOSE`和 `docker run -p` 有啥区别？
+
+Docker中有两个概念，一个叫做 `EXPOSE` ，一个叫做 `PUBLISH` 。
+
+* `EXPOSE` 是镜像/容器声明要暴露该端口，可以供其他容器使用。这种声明，在没有设定 `--icc=false`的时候，实际上只是一种标注，并不强制。也就是说，没有声明 `EXPOSE` 的端口，其它容器也可以访问。但是当强制 `--icc=false` 的时候，那么只有 `EXPOSE` 的端口，其它容器才可以访问。
+* `PUBLISH` 则是通过映射宿主端口，将容器的端口公开于外界，也就是说宿主之外的机器，可以通过访问宿主IP及对应的该映射端口，访问到容器对应端口，从而使用容器服务。
+
+`EXPOSE` 的端口可以不 `PUBLISH`，这样只有容器间可以访问，宿主之外无法访问。而 `PUBLISH` 的端口，可以不事先 `EXPOSE`，换句话说 `PUBLISH` 等于同时隐式定义了该端口要 `EXPOSE`。
+
+`docker run` 命令中的 `-p`, `-P` 参数，以及 `docker-compose.yml` 中的  `ports` 部分，实际上均是指 `PUBLISH`。
+
+小写 `-p` 是端口映射，格式为 `[宿主IP:]<宿主端口>:<容器端口>`，其中宿主端口和容器端口，既可以是一个数字，也可以是一个范围，比如：`1000-2000:1000-2000`。对于多宿主的机器，可以指定宿主IP，不指定宿主IP时，守护所有接口。
+
+大写 `-P` 则是自动映射，将所有定义 `EXPOSE` 的端口，随机映射到宿主的某个端口。
+
+### 我要映射好几百个端口，难道要一个个 `-p` 么？
+
+`-p` 是可以用范围的：
+
+```bash
+-p 8001-8010:8001-8010
+```
+
+### 为什么 `-p` 后还是无法通过映射端口访问容器里面的服务？
+
+首先，当然是检查这个 docker 的容器是否启动正常： `docker ps`、`docker top <容器ID>`、`docker logs <容器ID>`、`docker exec -it <容器ID> bash`等，这是比较常用的排障的命令；如果是 `docker-compose` 也有其对应的这一组命令，所以排障很容易。
+
+如果确保服务一切正常，甚至在容器里，可以访问到这些服务，`docker ps` 也显示出了端口映射成功，那么就需要**检查防火墙**了。
+
+#### 本机防火墙
+
+在 Docker 运行的系统上**不应该运行任何防火墙**……没错，说你呢，CentOS 的 **firewalld** 和 Ubuntu 的 **ufw** 同学。由于 Docker 使用 `iptables` 规则来进行网络数据流的控制，而那些防火墙总以为只有自己撰写 `iptables`，从而经常会导致 Docker 设置了一些规则，然后转眼就被 `firewalld` 或 `ufw` 给清了，特别是起、停防火墙服务的时候。从而导致 Docker 的网络从外界无法访问。
+
+> 为了避免 `iptables` 的规则干扰，不要在运行 Docker 的服务器上，运行**任何防火墙**或配置自定义的 `iptables` 规则，*除非*你非常清楚你在做什么，并且知道会产生什么后果。
+> 另外，**关闭防火墙后，记得重启系统**，至少是重启 Docker 服务。否则防火墙的起、停、刷新这类行为会导致清空 Docker 设置的网络规则，而导致容器内的网络无法和外部互联。
+
+#### 边界防火墙
+
+如果你使用的是云服务器，那么除了本机防火墙外，云服务的服务商一般会提供边界防火墙服务，比如安全组、安全策略类的东西。有些服务器为了安全起见，默认只开通必需的 `22` 端口给 SSH 使用，而其它端口屏蔽。这也是可能导致远程访问服务器 `-p` 端口失败的原因之一。如果你发现你在服务器本地访问服务，比如 `curl localhost` 没有阻碍，但是远程访问该服务就连接失败的话，那么应该去检查云服务商的安全设置，是否忘记了开启所需的端口。
+
+### `vethxxxx` 这种虚拟网卡和容器的对应关系从哪里看？
+
+`北京-ZZ-虾米`提供了一个好办法。
+
+```bash
+$ docker network ls
+NETWORK ID          NAME                       DRIVER
+56f04389b8f0        dockerlnmp_backend         bridge
+094fcb269385        dockerlnmp_frontend        bridge
+```
+
+注意这里的 `NETWORK ID`，然后运行 `ip a | grep veth`。
+
+```bash
+$ ip a | grep veth
+12: veth22996d2@if11: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-56f04389b8f0 state UP group default
+14: veth34ace9a@if13: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-56f04389b8f0 state UP group default
+16: veth0bb3771@if15: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-56f04389b8f0 state UP group default
+22: veth399b874@if21: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-094fcb269385 state UP group default
+24: vethf24a0a9@if23: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc noqueue master br-094fcb269385 state UP group default
+```
+
+注意这里的 `br-56f04389b8f0` 以及 `br-094fcb269385`，`br-` 后面的是上面的`网络id`，由此可以看出 `veth` 和 Docker 网络的对应关系，而容器都是连接到了某个Docker网络上的，从而就有了容器和 `veth` 的对应关系。
+
+对于某个网络出现了多个 `veth` 的情况，可以观察 `veth22996d2@if11` 后面的 `if11` 这部分，和容器内的 `ip addr` 的结果，一般 `奇-偶`是一对。
+
+### 如何让一个容器连接两个网络？
+
+如果是使用 `docker run`，那很不幸，一次只可以连接一个网络，因为 `docker run` 的 `--network` 参数只可以出现一次（如果出现多次，最后的会覆盖之前的）。不过容器运行后，可以用命令 `docker network connect` 连接多个网络。
+
+假设我们创建了两个网络：
+
+```bash
+$ docker network create mynet1
+$ docker network create mynet2
+```
+
+然后，我们运行容器，并连接这两个网络。
+
+```bash
+$ docker run -d --name web --network mynet1 nginx
+$ docker network connect mynet2 web
+```
+
+但是如果使用 `docker-compose` 那就没这个问题了。因为实际上，[`Docker Remote API`](https://docs.docker.com/engine/reference/api/docker_remote_api_v1.24/#/create-a-container) 是支持一次性指定多个网络的，但是估计是命令行上不方便，所以 `docker run` 限定为只可以一次连一个。`docker-compose` 直接就可以将服务的容器连入多个网络，没有问题。
+
+```yml
+version: '2'
+services:
+    web:
+        image: nginx
+        networks:
+            - mynet1
+            - mynet2
+networks:
+    mynet1:
+    mynet2:
+```
+
+### Docker 多宿主网络怎么配置？
+
+Docker 跨节点容器网络互联，最通用的是使用 `overlay` 网络。
+
+一代 Swarm 已经不再使用，它要求使用 `overlay` 网络前先准备好分布式键值库，比如 `etcd`, `consul` 或 `zookeeper`。然后在每个节点的 Docker 引擎中，配置 `--cluster-store` 和 `--cluster-advertise` 参数。这样才可以互连。可以参考我写的 LNMP 容器互联例子中的 [**run1.sh**](https://coding.net/u/twang2218/p/docker-lnmp/git/blob/master/run1.sh) 这个脚本，这个脚本是利用 `docker-machine`自动建立 Swarm 并且配置好 `overlay` 的脚本，可以分析其流程。
+
+现在都在使用二代 Swarm，也就是 `Docker Swarm Mode`，非常简单，只要 `docker swarm init` 建立集群，其它节点 `docker swarm join` 加入集群后，集群内的服务就自动建立了 `overlay` 网络互联能力。
+
+需要注意的是，如果是**多网卡环境**，无论是 `docker swarm init` 还是 `docker swarm join`，都不要忘记使用参数 `--advertise-addr` 指定宣告地址，否则自动选择的地址很可能不是你期望的，从而导致集群互联失败。格式为 `--advertise-addr <地址>:<端口>`，地址可以是 IP 地址，也可以是网卡接口，比如 `eth0`。端口默认为 `2377`，如果不改动可以忽略。
+
+此外，这是供**服务**使用的 `overlay`，因此所有 `docker service create` 的服务容器可以使用该网络，而 `docker run` 不可以使用该网络，除非明确该网络为 `--attachable`。
+
+关于 `overlay` 网络的进一步信息，可以参考官网文档：https://docs.docker.com/engine/userguide/networking/get-started-overlay/
+
+虽然默认使用的是 `overlay` 网络，但这并不是唯一的多宿主互联方案。Docker 内置了一些其它的互联方案，比如效率比较高的 `macvlan`。如果在局域网络环境下，对 `overlay` 的额外开销不满意，那么可以考虑 `macvlan` 以及 `ipvlan`，这是比较好的方案。
+https://docs.docker.com/engine/userguide/networking/get-started-macvlan/
+
+此外，还有很多第三方的网络可以用来进行跨宿主互联，可以访问官网对应文档进一步查看：<https://docs.docker.com/engine/extend/legacy_plugins/#/network-plugins>
+
+### 明明 `docker network ls` 中看到了建立的 `overlay` 网络，怎么 `docker run` 还说网络不存在啊？
+
+如果在 `docker network ls` 中看到了如下的 `overlay` 网络：
+
+```bash
+NETWORK ID          NAME                DRIVER              SCOPE
+...
+24pz359114y0        mynet               overlay             swarm
+...
+```
+
+那么这个名为 `mynet` 的网络是不可以连接到 `docker run` 的容器。如果试图连接则会出现报错。
+
+如果是 1.12 的系统，会看到这样报错信息：
+
+```bash
+$ docker run --rm --network mynet busybox
+docker: Error response from daemon: network mynet not found.
+See 'docker run --help'.
+```
+
+报错说 `mynet` 网络找不到。其实如果仔细观察，会看到这个名为 `mynet` 的网络，驱动是 `overlay` 没有错，但它的 `Scope` 是 `swarm`。这个意思是说这个网络是在二代 `Swarm` 环境中建立的 `overlay` 网络，因此只可以由 `Swarm` 环境下的服务容器才可以使用。而 `docker run` 所运行的只是零散的容器，并非 `Service`，因此自然在零散容器所能使用的网络中，不存在叫 `mynet` 网络。
+
+`docker run` 可以使用的 `overlay` 网络是 `Scope` 为 `global` 的 `overlay` 网络，也就是使用外置键值库所建立的 `overlay` 网络，比如一代 `Swarm` 的 `overlay` 网络。
+
+这点在 1.13 后稍有变化。如果是 1.13 以后的系统，会看到这样的信息：
+
+```bash
+$ docker run --rm --network mynet busybox
+docker: Error response from daemon: Could not attach to network mynet: rpc error: code = 7
+ desc = network mynet not manually attachable.
+```
+
+报错信息不再说网络找不到，而是说这个 `mynet` 网络无法连接。这是由于从 1.13 开始，允许在建立网络的时候声明这个网络是否可以被零散的容器所连接。如果 `docker network create` 加了 `--attachable` 的参数，那么在后期，这个网络是可以被普通容器所连接的。
+
+但是这是在安全模型上开了一个口子，因此，默认不允许普通容器链接，并且不建议使用。
+
+### 使用 `Swarm Mode` 的时，看到有个叫 `ingress` 的 `overlay` 网络，它和自己创建的网络有什么区别？
+
+在启用了二代 Swarm 后，可能会在网络列表时看到一个名为 `ingress` 的 overlay 网络。
+
+```bash
+$ docker network ls
+NETWORK ID          NAME                DRIVER              SCOPE
+6beb824623a4        bridge              bridge              local
+f3f636574c7a        docker_gwbridge     bridge              local
+cfeb2513a4a3        host                host                local
+88smbt683r5p        ingress             overlay             swarm
+24pz359114y0        mynet               overlay             swarm
+d35d69ece740        none                null                local
+```
+
+这里可以看到两个 `overlay` 网络，其中一个是我们创建的 `mynet`，另一个则是 Docker 引擎自己创建的 `ingress`，从驱动和 `Scope` 可以看出两个网络都是给 Swarm Mode 使用的 `overlay` 网络。
+
+`ingress` 是 `overlay` 网络，但并不是普通的 `overlay network`，它是为边界进入流量特殊准备的网络。这个网络存在于集群中每一个Docker宿主上，不需要额外建立。
+
+当我们使用 `docker service create -p 80:80` 这种形式创建一个服务的时候，我们要求映射集群端口 `80` 到服务容器的 `80` 端口上。其效果是访问任一节点的 `80` 端口，即使这个节点没有运行我们所需的容器，依旧可以连接到容器服务，并且取得结果。实现这样效果的一个原因就是因为 `ingress` 网络的存在。
+
+Swarm 中的每个节点，都会有一个**隐藏的沙箱容器**监听宿主的服务端口，用于接收来自集群外界的访问。
+
+我们可以通过 `docker network inspect ingress` 来看到这个沙箱容器：
+
+```bash
+$ docker network inspect ingress
+[
+   {
+       "Name": "ingress",
+       "Id": "88smbt683r5p7c0l7sd0dpniw",
+       "Scope": "swarm",
+       "Driver": "overlay",
+       "EnableIPv6": false,
+       "IPAM": {
+           "Driver": "default",
+           "Options": null,
+           "Config": [
+               {
+                   "Subnet": "10.255.0.0/16",
+                   "Gateway": "10.255.0.1"
+               }
+           ]
+       },
+       "Internal": false,
+       "Containers": {
+           "faff08692b5f916fcb15aa7ac6bc8633a0fa714a52a1fb75e57525c94581c45a": {
+               "Name": "web.1.1jyunyva6picwsztzrj6t2cio",
+               "EndpointID": "58240770eb25565b472384731b1b90e36141a633ce184a5163829cf96e9d1195",
+               "MacAddress": "02:42:0a:ff:00:05",
+               "IPv4Address": "10.255.0.5/16",
+               "IPv6Address": ""
+           },
+           "ingress-sbox": {
+               "Name": "ingress-endpoint",
+               "EndpointID": "fe8f89d4f99d7bacb14c5cb723682c180278d62e9edd10b523cdd81a45695c5d",
+               "MacAddress": "02:42:0a:ff:00:03",
+               "IPv4Address": "10.255.0.3/16",
+               "IPv6Address": ""
+           }
+       },
+       "Options": {
+           "com.docker.network.driver.overlay.vxlanid_list": "256"
+       },
+       "Labels": {}
+   }
+]
+```
+
+在上面的命令返回信息中，我们可以看到一个名为 `ingress-endpoint` 的容器，这就是边界沙箱容器。
+
+当我们创建服务时，使用了 `-p` 参数后，服务容器就会被自动的加入到 `ingress` 网络中，同时会在沙箱中注册映射信息，告知哪个服务要求守护哪个端口，具体对应容器是哪些。
+
+因此当沙箱收到外部连接后，通过访问端口就可以知道具体服务在守护，然后会通过这个 `ingress` 网络去将连接请求转发给对应服务容器。而由于 `ingress` 的本质是 `overlay network`，因此，无论服务容器运行于哪个节点上，沙箱都可以成功的将连接转发给正确的服务容器。
+
+所以，`ingress` 是特殊用途的网络，只要服务有 `-p` 选项，那么服务容器就会自动被加入该网络。因此把 `ingress` 网络当做普通的 `overlay` 网络使用的话，除了会干扰 Swarm 正常的边界负载均衡的能力，也会破坏服务隔离的安全机制。所以不要把这个网络当做普通的 `overlay` 网络来使用，需要控制服务互联和隔离时，请用自行创建的 `overlay` 网络。
+
+### 听说 `--link` 过时不再用了？那容器互联、服务发现怎么办？
+
+在 1-2 年前，Docker 所有容器都连接于默认的桥接网络上，也就是很多老文章鼓捣的 `docker0` 桥接网卡。因此实际上默认情况下所有容器都是可以互联的，没有隔离，当然这样安全性不好。而服务发现，是在这种环境下发展出来的，通过修改容器内的 `/etc/hosts` 文件来完成的。凡是 `--link` 的主机的别名就会出现于 `/etc/hosts` 中，其地址由 Docker 引擎维护。因此容器间才可以通过**别名**互访。
+
+但是这种办法并不是好的解决方案，Docker 早在一年多以前就已经使用自定义网络了。在同一个网络中的容器，可以互联，并且，Docker 内置了 DNS，容器内的应用可以使用服务名、容器名、别名来进行服务发现，名称会经由内置的 DNS 进行解析，其结果是动态的；而不在同一网络中的容器，不可以互联。
+
+因此，现在早就不用 `--link` 了，而且非常不建议使用。
+
+> PS：貌似智障zabbix的镜像的引导上还写着--link 
+
+首先是因为使用 `--link` 就很可能还在用默认桥接网络，这很不安全，所有容器都没有适度隔离，用自定义网络才比较方便互联隔离。
+
+其次，修改 `/etc/hosts` 文件有很多弊病。比如，高频繁的容器启停环境时，容易产生竞争冒险，导致 `/etc/hosts` 文件损坏，出现访问故障；或者有些应用发现是来自于 `/etc/hosts` 文件后，就假定其为静态文件，而缓存结果不再查询，从而导致容器启停 IP 变更后，使用旧的条目而无法连接到正确的容器等等。
+
+另外，在一代 Swarm 环境中，在 `docker-compose.yml` 中使用了 `links` 就意味着服务间的强依赖关系，因此调度时不会将服务运行于不同节点，而是全部运行于一个节点，使得横向扩展失败。
+
+所以不要再使用 `--link` 以及 `docker-compose.yml` 中的 `links` 了。应该使用 `docker network`，建立网络，而 `docker run --network` 来连接特定网络。或者使用 `version: '3'` 的 `docker-compose.yml` 直接定义自定义网络并使用。
+
+建议去看一下我写的 `docker-copmpose` 多容器互联的例子：<https://github.com/Mr-Linus/docker-compose>，如果你是第一次接触，请查看<https://docs.docker-cn.com/get-started/part3/>
+
+### 使用 HBase/Hadoop 的时候，反向解析总是不对，怎么办？
+
+Hadoop/HBase 这类东西总喜欢根据设定的名称正向的解析一遍，然后在某个时候会反向的解析一遍检查是否一致。这种默认假定很多时候会出问题，特别是对于使用 `/etc/hosts` 的时候。正向解析会从 `/etc/hosts` 中取得，而反向解析则更可能走 DNS，于是出现了不一致。
+
+对于 Docker 而言，使用自定义网络后，一个容器有很多个名字，内置 DNS 可以根据**服务名**、**容器名**、**网络别名**、**<容器名>.<网络名>** 等来进行解析。因此正向解析设置任何一个，其结果都会指向容器的 IP。
+
+而反向解析则不会返回所有结果，而只返回`<容器名>.<网络名>`。
+
+所以当有人这样运行容器的时候：
+
+```bash
+$ docker run -it --rm \
+    --name wombat.example.com \
+    --hostname wombat.example.com \
+    --network net1 \
+    m3adow/nettools
+```
+
+会发现反向解析结果并非自己所期望的：
+
+```bash
+/ # ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+50: eth0@if51: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP
+    link/ether 02:42:ac:13:00:02 brd ff:ff:ff:ff:ff:ff
+    inet 172.19.0.2/16 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:acff:fe13:2/64 scope link
+       valid_lft forever preferred_lft forever
+/ # dig +short wombat.example.com
+172.19.0.2
+/ # host 172.19.0.2
+2.0.19.172.in-addr.arpa domain name pointer wombat.example.com.net1.
+```
+
+从上面的解析结果可以看出来，由 `wombat.example.com` 正向解析的话，其结果是 `172.19.0.2`，确实是我们的 IP 地址；但是由  `172.19.0.2` 反向解析的话，所得到的域名确实 `wombat.example.com.net1`。多了一个 `.net1` 的尾巴。从而导致 HBase/Hadoop 这类软件出现故障。
+
+解决办法很简单，我们现在知道反向域名解析的格式为 `<容器名>.<网络名>`。那么我们只需要将网络名设为域名就可以了。
+
+```bash
+$ docker network create example.com
+$ docker run -it --rm \
+    --name wombat \
+    --hostname wombat.example.com \
+    --network example.com \
+    m3adow/nettools
+/ # ip a
+1: lo: <LOOPBACK,UP,LOWER_UP> mtu 65536 qdisc noqueue state UNKNOWN qlen 1
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+    inet 127.0.0.1/8 scope host lo
+       valid_lft forever preferred_lft forever
+    inet6 ::1/128 scope host
+       valid_lft forever preferred_lft forever
+52: eth0@if53: <BROADCAST,MULTICAST,UP,LOWER_UP,M-DOWN> mtu 1500 qdisc noqueue state UP
+    link/ether 02:42:ac:15:00:02 brd ff:ff:ff:ff:ff:ff
+    inet 172.21.0.2/16 scope global eth0
+       valid_lft forever preferred_lft forever
+    inet6 fe80::42:acff:fe15:2/64 scope link
+       valid_lft forever preferred_lft forever
+/ # dig +short wombat.example.com
+172.21.0.2
+/ # host 172.21.0.2
+2.0.21.172.in-addr.arpa domain name pointer wombat.example.com.
+```
+
+这里看到，正向解析没问题，反向解析也得到了 `wombat.example.com` 这个所期望的结果。
+
+> 需要注意的是，服务名、主机名、容器名这类可用于服务发现的名称，应该尽量使用 **非 FQDN**，也就是不包含 `.` 的单一名字，否则在某些情况下会出错。
+
+### 容器怎么取宿主机 IP 啊？
+
+#### 单机环境
+
+如果是单机环境，很简单，不必琢磨怎么突破命名空间限制，直接用环境变量送进去即可。
+
+```bash
+docker run -d -e HOST_IP=<宿主的IP地址> nginx
+```
+
+然后容器内直接读取 `HOST_IP` 环境变量即可。
+
+#### 集群环境
+
+集群环境相对比较复杂，`docker service create` 中的 `-e` 以及 `--env-file`是在服务创建时指定、读取环境变量内容，而不是运行时，因此对于每个节点都是一样的。而且目前不存在 `dockerd -e` 选项，所以直接使用这些选项达不到我们想要的效果。
+
+不过有变通的办法，可以在宿主上建立一个 `/etc/variables` 文件（名字随意，这里用这个文件举例）。其内容为：
+
+```bash
+HOST_IP=1.2.3.4
+```
+
+其中 `1.2.3.4` 是这个节点的宿主 IP，因此每个节点的 `/etc/variables` 的内容不同。
+
+而在启动服务时，指定挂载这个服务端本地文件：
+
+```bash
+docker service create --name app \
+    --mount type=bind,source=/etc/variables,target=/etc/variables:ro \
+    myapp
+```
+
+由于 `--mount` 是发生于容器运行时，因此所加载的是所运行的服务器的 `/etc/variables`，里面所包含的也是该服务器的 IP 地址。
+
+在 `myapp` 这个镜像的入口脚本加入加载该环境变量文件的命令：
+
+```bash
+source /etc/variables
+```
+
+这样 `app` 这个服务容器就会拥有 `HOST_IP` 环境变量，其值为所运行的宿主 IP。
+
+## 存储问题 `(11)`
+
+### 容器磁盘可以限制配额么？
+
+对于 `devicemapper`, `btrfs`, `zfs` 来说，可以通过 `--storage-opt size=100G` 这种形式限制 `rootfs` 的大小。
+
+```bash
+docker create -it --storage-opt size=120G fedora /bin/bash
+```
+
+参考官网文档：<https://docs.docker.com/engine/reference/commandline/run/#/set-storage-driver-options-per-container>
+
+### 容器内的数据该保存在镜像里还是物理机里？
+
+如果所谓数据是指运行时动态的数据，那么这部分数据文件不应该保存于镜像内。在运行时要保持容器基础文件不可变的特性，而变化部分使用挂载宿主目录，或者数据卷来解决。
+
+建议看一下官网 `docker volume` 的文档：<https://docs.docker.com/engine/tutorials/dockervolumes/>
+
+### 看到总说要保持容器无状态，那什么是无状态？
+
+这里说到的有两个层面的无状态：
+
+#### 容器存储层的无状态
+
+这里提到的存储层是指用于存储镜像、容器各个层的存储，一般是 `Union FS`，如 `AUFS`，或者是使用块设备的一些机制（如 `snapshot` ）进行模拟，如 `devicemapper`。
+
+`Union FS` 这类存储系统，相当于是在现有存储上，再加一层或多层存储，这类存储的读写性能并不好。并且对于 `CentOS` 这类只能使用 `devicemapper` 的系统而言，存储层的读写还经常出 bug。因此，**在 Docker 使用过程中，要避免存储层的读写**。频繁读写的部分，应该使用`卷`。需要持久化的部分，可以使用**命名卷**进行持久化。由于命名卷的生存周期和容器不同，容器消亡重建，卷不会跟随消亡。所以容器可以随便删了重新`run`，而其挂载的`卷`则会保持之前的数据。
+
+#### 服务层面的无状态
+
+使用卷持久化容器状态，虽然从存储层的角度看，是无状态的，但是从服务层面看，这个服务是有状态的。
+
+从服务层面上说，也存在无状态服务。就是说服务本身不需要写入任何文件。比如前端 `nginx`，它不需要写入任何文件（日志走Docker日志驱动），中间的 `php`, `node.js` 等服务，可能也不需要本地存储，它们所需的数据都在 `redis`, `mysql`, `mongodb` 中了。这类服务，由于不需要卷，也不发生本地写操作，删除、重启、不保存自身状态，并不影响服务运行，它们都是`无状态服务`。这类服务由于不需要状态迁移，不需要分布式存储，因此它们的集群调度更方便。
+
+之前没有 `docker volume` 的时候，有些人说 Docker 只可以支持无状态服务，原因就是只看到了存储层需求无状态，而没有 `docker volume` 的持久化解决方案。
+
+现在这个说法已经不成立，服务可以有状态，状态持久化用 `docker volume`。
+
+当服务可以有状态后，如果使用默认的 `local` 卷驱动，并且使用`本地存储`进行状态持久化的情况，单机服务、容器的再调度运行没有问题。但是顾名思义，使用`本地存储`的卷，只可以为当前主机提供持久化的存储，而无法跨主机。
+
+但这只是使用默认的 `local` 驱动，并且使用 `本地存储` 而已。使用分布式/共享存储就可以解决跨主机的问题。`docker volume` 自然支持很多分布式存储的驱动，比如 `flocker`、`glusterfs`、`ceph`、`ipfs` 等等。常用的插件列表可以参考官方文档：<https://docs.docker.com/engine/extend/legacy_plugins/#/volume-plugins>
+
+### 数据容器、数据卷、命名卷、匿名卷、挂载目录这些都有什么区别？
+
+首先，挂载分为`挂载本地宿主目录` 和 `挂载数据卷(Volume)`。而`数据卷`又分为`匿名数据卷`和`命名数据卷`。
+
+**绑定宿主目录**的概念很容易理解，就是将宿主目录绑定到容器中的某个目录位置。这样容器可以直接访问宿主目录的文件。其形式是
+
+```bash
+docker run -d -v /var/www:/app nginx
+```
+
+这里注意到 `-v` 的参数中，前半部分是绝对路径。在 `docker run` 中必须是绝对路径，而在 `docker-compose` 中，可以是相对路径，因为 `docker-compose` 会帮你补全路径。
+
+另一种形式是使用 `Docker Volume`，也就是**数据卷**。这是很多看*古董书*的人不了解的概念，**不要跟数据容器（Data Container）弄混**。数据卷是 Docker 引擎维护的存储方式，使用 `docker volume create` 命令创建，可以利用卷驱动支持多种存储方案。其默认的驱动为 `local`，也就是本地卷驱动。本地驱动支持**命名卷**和**匿名卷**。
+
+顾名思义，命名卷就是有名字的卷，使用 `docker volume create --name xxx` 形式创建并命名的卷；而匿名卷就是没名字的卷，一般是 `docker run -v /data` 这种不指定卷名的时候所产生，或者 `Dockerfile` 里面的定义直接使用的。
+
+有名字的卷，在用过一次后，以后挂载容器的时候还可以使用，因为有名字可以指定。所以一般需要保存的数据使用命名卷保存。
+
+而匿名卷则是随着容器建立而建立，随着容器消亡而淹没于卷列表中（对于 `docker run` 匿名卷不会被自动删除）。**对于二代 Swarm 服务而言，匿名卷会随着服务删除而自动删除。** 因此匿名卷只存放无关紧要的临时数据，随着容器消亡，这些数据将失去存在的意义。
+
+此外，还有一个叫数据容器 (Data Container) 的概念，也就是使用 `--volumes-from` 的东西。这早就不用了，如果看了书还在说这种方式，那说明书已经过时了。按照今天的理解，这类数据容器，无非就是挂了个匿名卷的容器罢了。
+
+在 `Dockerfile` 中定义的挂载，是指 `匿名数据卷`。`Dockerfile` 中指定 `VOLUME` 的目的，只是为了将某个路径确定为卷。
+
+我们知道，按照最佳实践的要求，**不应该在容器存储层内进行数据写入操作**，所有写入应该使用卷。如果定制镜像的时候，就可以确定某些目录会发生频繁大量的读写操作，那么**为了避免**在运行时由于用户疏忽而忘记指定卷，导致容器发生存储层写入的问题，就可以在 `Dockerfile` 中使用 `VOLUME` 来指定某些目录为匿名卷。这样即使用户忘记了指定卷，也不会产生不良的后果。
+
+这个设置可以在运行时覆盖。通过 `docker run` 的 `-v` 参数或者 `docker-compose.yml` 的 `volumes` 指定。使用`命名卷`的好处是可以复用，其它容器可以通过这个`命名数据卷`的名字来指定挂载，共享其内容（不过**要注意并发访问的竞争问题**）。
+
+比如，`Dockerfile` 中说 `VOLUME /data`，那么如果直接 `docker run`，其 `/data` 就会被挂载为匿名卷，向 `/data` 写入的操作不会写入到容器存储层，而是写入到了匿名卷中。但是如果运行时 `docker run -v mydata:/data`，这就覆盖了 `/data` 的挂载设置，要求将 `/data` 挂载到名为 `mydata` 的命名卷中。所以说 `Dockerfile` 中的 `VOLUME` 实际上是一层保险，确保镜像运行可以更好的遵循最佳实践，不向容器存储层内进行写入操作。
+
+数据卷默认可能会保存于 `/var/lib/docker/volumes`，不过一般不需要、也**不应该访问这个位置**。
+
+### 卷和挂载目录有什么区别？
+
+卷 (Docker Volume) 是受控存储，是由 Docker 引擎进行管理维护的。因此使用卷，你可以不必处理 `uid`、`SELinux` 等各种权限问题，Docker 引擎在建立卷时会自动添加安全规则，以及根据挂载点调整权限。并且可以统一列表、添加、删除。另外，除了本地卷外，还支持网络卷、分布式卷。
+
+而挂载目录那就没人管了，属于用户自行维护。你就必须手动处理所有权限问题。特别是在 `CentOS` 上，很多人碰到 `Permission Denied`，就是因为没有使用卷，而是挂载目录，而且还对 SELinux 安全权限一无所知导致。
+
+### 为什么绑定了宿主的文件到容器，宿主修改了文件，容器内看到的还是旧的内容啊？
+
+在绑定宿主内容的形式中，有一种特殊的形式，就是**绑定宿主文件**，既：
+
+```bash
+docker run -d -v $PWD/myapp.ini:/app/app.ini myapp
+```
+
+在 `myapp.ini` 文件**不发生改变**的情况下，这样的绑定是和绑定宿主目录性质一样，同样是将宿主文件绑定到容器内部，容器内可以看到这个文件。但是，一旦文件发生改变，情况则有不同。
+
+简单的文件修改，比如 `echo "name = jessie" >> myapp.ini`，这类修改依旧还是原来的文件，宿主（或容器）对文件进行的改动，另一方是可以看到的。
+
+而复杂的文件操作，比如使用 `vim`，或者其它编辑器编辑文件，则很有可能会导致一方的修改，另一方看不到。
+
+其原因是这类编辑器在保存文件的时候，经常会采用一种避免写入过程中发生故障而导致文件丢失的策略，既先把内容写到一个新的文件中去，写好了后，再删除旧的文件，然后把新文件改名为旧的文件名，从而完成保存的操作。从这个操作流程可以看出，虽然修改后的文件的名字和过去一样，但对于文件系统而言是一个新的文件了。换句话说，虽然是同名文件，但是旧的文件的 `inode` 和修改后的文件的 `inode` 不同。
+
+```bash
+$ ls -i
+268541 hello.txt
+$ vi hello.txt
+$ ls -i
+268716 hello.txt
+```
+
+如上面的例子可以看到，经过 `vim` 编辑文件后，`inode` 从 `268541` 变为了 `268716`，这就是刚才说的，名字还是那个名字，文件已不是原来的文件了。
+
+而 Docker 的 **绑定**宿主文件，实际上在文件系统眼里，针对的是 `inode`，而不是文件名。因此容器内所看到的，依旧是之前旧的 `inode` 对应的那个文件，也就是旧的内容。
+
+这就出现了之前的那个问题，在宿主内修改绑定文件的内容，结果发现容器内看不到改变，其原因就在于**宿主的那个文件已不是原来的文件了**😂。
+
+这类问题解决办法很简单，如果文件可能改变，那么就**不要绑定宿主文件，而是绑定一个宿主目录**，这样只要目录不跑，里面文件爱咋改就咋改😁。
+
+### 多个 Docker 容器之间共享数据怎么办？NFS ？
+
+如果是同一个宿主，那么可以绑定同一个数据卷，当然，程序上要处理好并发问题。
+
+如果是不同宿主，则可以使用分布式数据卷驱动，让分布在不同宿主的容器都可以访问到的分布式存储的位置。如S3之类：
+
+<https://docs.docker.com/engine/extend/plugins/#volume-plugins>
+
+### 既然一个容器一个应用，那么我想在该容器中用计划任务 `cron` 怎么办？
+
+`cron` 其实是另一个服务了，所以应该另起一个容器来进行，如需访问该应用的数据文件，那么可以共享该应用的数据卷即可。而 `cron` 的容器中，`cron` 以前台运行即可。
+
+比如，我们希望有个 `python` 脚本可以定时执行。那么可以这样构建这个容器。
+
+首先基于 `python` 的镜像定制：
+
+```Dockerfile
+FROM python:3.5.2
+
+ENV TZ=Asia/Shanghai
+
+RUN apt-get update \
+    && apt-get install -y cron \
+    && apt-get autoremove -y
+
+COPY ./cronpy /etc/cron.d/cronpy
+CMD ["cron", "-f"]
+```
+
+其中所提及的 `cronpy` 就是我们需要计划执行的 `cron` 脚本。
+
+```bash
+* * * * * root /app/task.py >> /var/log/task.log 2>&1
+```
+
+在这个计划中，我们希望定时执行 `/app/task.py` 文件，日志记录在 `/var/log/task.log` 中。这个 `task.py` 是一个非常简单的文件，其内容只是输出个时间而已。
+
+```python
+#!/usr/local/bin/python
+from datetime import datetime
+print("Cron job has run at {0} with environment variable ".format(str(datetime.now())))
+```
+
+这 `task.py` 可以在构建镜像时放进去，也可以挂载宿主目录。在这里，我以挂载宿主目录举例。
+
+```bash
+# 构建镜像
+docker build -t cronjob:latest .
+
+# 运行镜像
+docker run \
+    --name cronjob \
+    -d \
+    -v $(pwd)/task.py:/app/task.py \
+    -v $(pwd)/log/:/var/log/ \
+    cronjob:latest
+```
+
+需要注意的是，应该在构建主机上赋予 `task.py` 文件可执行权限。
+
+### 如何初始化卷？
+
+卷（`Volume`），是用于动态数据持久化的。因此其内存储的都是动态数据，运行时会变化。如果这里面需要初始化里面的数据，需要在运行时进行。或者在镜像里加入初始化的脚本，比如 `mysql` 镜像中的初始化目录中的脚本；或者自己单独制作纯粹用于初始化卷用的镜像，单独一次性运行以将初始化数据灌入卷中。
+
+举个例子来说，假设你需要个卷 `mydata`，然后里面需要有个 `hello.txt` 文件是必须存在的，否则容器运行就要出大事儿了……（这需求很傻我知道……😅好吧，假设如此）。
+
+当然，我们得先有这个卷。
+
+```bash
+docker volume create --name mydata
+```
+
+那怎么把这个超重要的 `hello.txt` 文件放入卷中呢？有几种办法。
+
+#### 正常挂载该 `mydata` 卷，然后 `docker cp` 进去
+
+这是个很傻的办法，不过如果容器运行并不依赖于 `hello.txt` 的话，这样做是可以的。
+
+```bash
+$ docker run -d --name web -v mydata:/data nginx
+$ docker cp ./hello.txt web:/data/
+```
+
+这样是先让容器启动，启动后，再把所需数据导入卷里面去。以后容器就可以使用 `/data/hello.txt` 文件了。
+
+但是，如果容器是严重依赖于这个 `hello.txt` 文件的话，这样做就会出问题。容器会因为 `hello.txt` 文件不存在，而报错退出，导致根本没有 `docker cp` 的机会。
+
+这种情况，我们可以变通一下。
+
+```bash
+$ docker run --rm \
+    -v $PWD:/source \
+    -v mydata:/data \
+    busybox \
+    cp /source/hello.txt /data/
+$ docker run -d --name web -v mydata:/data nginx
+```
+
+这里我们先启动了一个 `busybox` 容器，分别挂载要复制的源以及目标的 `mydata` 卷，然后用 `cp` 命令将 `hello.txt` 复制到 `mydata` 中去。数据导入结束后，我们再正式挂载 `mydata` 卷到正式的容器上并启动。这个时候严重依赖 `/data/hello.txt` 的这个容器就可以顺利运行了。
+
+#### 专门制作初始化镜像
+
+手动的去执行 `docker cp`，或者 `docker run ... cp ...` 并不是很正规。可以写个脚本让一切都标准化，但是，除了流程外，还需要确保当前环境中的初始化数据的版本必须是所期望的，否则初始化了错误的数据，也会让运行时状态达不到预期的效果。
+
+因此，另一种办法是专门制作一个初始化卷的镜像，这样的做法也比较方便在 CI/CD 流程中对初始化数据的过程进行测试确认。
+
+```Dockerfile
+FROM busybox
+COPY hello.txt /source/
+VOLUME /data
+CMD ["cp", "/source/hello.txt", "/data/"]
+```
+
+这样的镜像只有一个生存目的，就是挂载 `mydata` 卷，并且把数据导入进去。假设构建好的镜像名为 `volume-prepare`，只需要执行下面的命令就可以完成导入：
+
+```bash
+$ docker run --rm -v mydata:/data volume-prepare
+```
+
+#### 在镜像的 `Dockerfile` 制作中，加入初始化部分
+
+在之前的问答中我们已经了解到，官方镜像 `mysql` 中可以使用 `Dockerfile` 来添加初始化脚本，并且会在运行时判断是否为第一次运行，如果确实需要初始化，则执行定制的初始化脚本。
+
+我们也可以使用这种方法将 `hello.txt` 在初始化的时候加入到 `mydata` 卷中去。
+
+首先我们需要写一个进入点的脚本，用以确保在容器执行的时候都会运行，而这个脚本将判断是否需要数据初始化，并且进行初始化操作。
+
+```bash
+#!/bin/bash
+# entrypoint.sh
+
+if [ ! -f "/data/hello.txt" ]; then
+    cp /source/hello.txt /data/
+fi
+
+exec "$@"
+```
+
+名为 `entrypoint.sh` 的这个脚本很简单，判断一下 `/data/hello.txt` 是否存在，如果不存在就需要初始化。初始化行为也很简单，将实现准备好的 `/source/hello.txt` 复制到 `/data/` 目录中去，以完成初始化。程序的最后，将执行送入的命令。
+
+我们可以这样写 `Dockerfile`：
+
+```Dockerfile
+FROM nginx
+COPY hello.txt /source/
+COPY entrypoint.sh /
+VOLUME /data
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+当我们构建镜像、启动容器后，就会发现 `/data` 目录下已经存在了 `hello.txt` 文件了，初始化成功了。
+
+### 为什么说数据库不适合放在 Docker 容器里运行？
+
+不为什么，**因为这个说法不对**，大部分认为数据库必须放到容器外运行的人根本不知道 `Docker Volume` 为何物。
+
+在早年 Docker 没有 `Docker Volume` 的时候，其数据持久化是一个问题，但是这已经很多年过去了。现在有 `Docker Volume` 解决持久化问题，从本地目录绑定、受控存储空间、块设备、网络存储到分布式存储，`Docker Volume` 都支持，不存在数据读写类的服务不适于运行于容器内的说法。
+
+Docker 不是虚拟机，使用数据卷是直接向宿主写入文件，不存在性能损耗。而且卷的生存周期独立于容器，容器消亡卷不消亡，重新运行容器可以挂载指定命名卷，数据依然存在，也不存在无法持久化的问题。
+
+建议去阅读一下官方文档：
+
+* <https://docs.docker.com/engine/tutorials/dockervolumes/>
+* <https://docs.docker.com/engine/reference/commandline/volume_create/>
+* <https://docs.docker.com/engine/extend/legacy_plugins/#/volume-plugins>
+
+### 如何列出容器和所使用的卷的关系？
+
+要感谢强大的 `Go Template`，可以使用下面的命令来显示：
+
+```bash
+docker inspect --format '{{.Name}} => {{with .Mounts}}{{range .}}
+    {{.Name}},{{end}}{{end}}' $(docker ps -aq)
+```
+
+*注意这里的换行和空格是有意如此的*，这样就可以再返回结果控制缩进格式。其结果将是如下形式：
+
+```bash
+$ docker inspect --format '{{.Name}} => {{with .Mounts}}{{range .}}
+    {{.Name}}{{end}}{{end}}' $(docker ps -aq)
+/device_api_1 =>
+/device_dashboard-debug_1 =>
+/device_redis_1 =>
+    device_redis-data
+/device_mongo_1 =>
+    device_mongo-data
+    61453e46c3409f42e938324d7feffc6aeb6b7ce16d2080566e3b128c910c9570
+/prometheus_prometheus_1 =>
+    fc0185ed3fc637295de810efaff7333e8ff2f6050d7f9368a22e19fb2c1e3c3f
+```
+
+## 镜像问题 `(17)`
+
+### `docker pull` 下来的镜像文件都在哪？
+
+> 初学 Docker 要反复告诫自己，**Docker 不是虚拟机**。
+
+Docker不是虚拟机，Docker 镜像也不是虚拟机的 ISO 文件。Docker 的镜像是分层存储，每一个镜像都是由很多层，很多个文件组成。而不同的镜像是共享相同的层的，所以这是一个树形结构，不存在具体哪个文件是 `pull` 下来的镜像的问题。
+
+具体镜像保存位置取决于系统，一般`Linux`系统下，在 `/var/lib/docker` 里。对于使用 `Union FS` 的系统(`Ubuntu`)，如 `aufs`, `overlay2` 等，可以直接在 `/var/lib/docker/{aufs,overlay2}` 下看到找到各个镜像的层、容器的层，以及其中的内容。
+
+但是，对于`CentOS`这类没有`Union FS`的系统，会使用如`devicemapper`这类东西的一些特殊功能(如`snapshot`)模拟，镜像会存储于块设备里，因此无法看到具体每层信息以及每层里面的内容。
+
+需要注意的是，默认情况下，`CentOS/RHEL` 使用 `lvm-loop`，也就是本地稀疏文件模拟块设备，这个文件会位于 `/var/lib/docker/devicemapper/devicemapper/data` 的位置。这是非常不推荐的，如果发现这个文件很大，那就说明你在用 `devicemapper + loop` 的方式，不要这么做，去参照官方文档，换 `direct-lvm`，也就是分配真正的块设备给 `devicemapper` 去用。
+
+### `docker images` 命令显示的镜像占了好大的空间，怎么办？每次都是下载这么大的镜像？
+
+这个显示的大小是计算后的大小，要知道 docker image 是分层存储的，在`1.10`之前，不同镜像无法共享同一层，所以基本上确实是下载大小。但是从`1.10`之后，已有的层（通过`SHA256`来判断），不需要再下载。只需要下载变化的层。所以实际下载大小比这个数值要小。而且本地硬盘空间占用，也比`docker images`列出来的东西加起来小很多，很多重复的部分共享了。
+
+### `docker images -a` 后显示了好多 `<none>` 的镜像？都是什么呀？能删么？
+
+简单来说，`<none>` 就是说该镜像没有打标签。而没有打标签镜像一般分为两类，一类是**依赖镜像**，一类是**丢了标签的镜像**。
+
+#### 依赖镜像
+
+Docker的镜像、容器的存储层是Union FS，分层存储结构。所以任何镜像除了最上面一层打上标签(tag)外，其它下面依赖的一层层存储也是存在的。这些镜像没有打上任何标签，所以在 `docker images -a` 的时候会以 `<none>` 的形式显示。注意观察一下 `docker pull` 的每一层的`sha256`的校验值，然后对比一下 `<none>` 中的相同校验值的镜像，它们就是依赖镜像。这些镜像**不应当被删除**，因为有标签镜像在依赖它们。
+
+#### 丢了标签的镜像
+
+这类镜像可能本来有标签，后来丢了。原因可能很多，比如：
+
+* `docker pull` 了一个同样标签但是新版本的镜像，于是该标签从旧版本的镜像转移到了新版本镜像上，那么旧版本的镜像上的标签就丢了；
+* `docker build` 时指定的标签都是一样的，那么新构建的镜像拥有该标签，而之前构建的镜像就丢失了标签。
+
+这类镜像被称为 `dangling` - 虚悬镜像。这些镜像可以删除，手动删除 dangling 镜像：
+
+```bash
+docker image prune
+```
+
+对于 1.13 以前的老版本，使用 `dangling=true` 过滤条件即可。可以使用命令：`docker rmi $(docker images -aq -f "dangling=true")`
+
+对于频繁构建的机器，比如 Jenkins 之类的环境。手动清理显然不是好的办法，应该定期执行固定脚本来清理这些无用的镜像。很幸运，Spotify 也面临了同样的问题，他们已经写了一个开源工具来做这件事情：<https://github.com/spotify/docker-gc>
+
+### 为什么 Docker Hub 的镜像尺寸和 `docker images` 不一致？
+
+Docker Hub上显示的是经过 `gzip` 压缩后的镜像大小，这个大小也是你将下载的镜像大小，一般来说也是 Docker Hub 用户最关心的大小。
+
+而 `docker images` 显示的是`pull`下来并解压缩后的大小，因为使用`docker images`的时候更关心的是本地磁盘空间占用的大小，所以这里显示的是未压缩镜像的大小。
+
+### `docker commit` 怎么用啊？
+
+简单的回答就是，不要用 `commit`，去写 `Dockerfile`。
+
+> Docker 不是虚拟机。这句话要在学习 Docker 的过程中反复提醒自己。所以不要把虚拟机中的一些概念带过来。
+
+Docker 提供了很好的 `Dockerfile` 的机制来帮助定制镜像，可以直接使用 Shell 命令，非常方便。而且，这样制作的镜像更加透明，也容易维护，在基础镜像升级后，可以简单地重新构建一下，就可以继承基础镜像的安全维护操作。
+
+使用 `docker commit` 制作的镜像被称为`黑箱镜像`，换句话说，就是里面进行的是黑箱操作，除本人外无人知晓。即使这个制作镜像的人，过一段时间后也不会完整的记起里面的操作。那么当有些东西需要改变时，或者因基础镜像更新而需要重新制作镜像时，会让一切变得异常困难，就如同重新安装调试配置服务器一样，失去了 Docker 的优势了。
+
+另外，Docker 不是虚拟机，其文件系统是 Union FS，分层式存储，每一次 `commit` 都会建立一层，上一层的文件并不会因为 `rm` 而删除，只是在当前层标记为删除而看不到了而已，每次 `docker pull` 的时候，那些不必要的文件都会如影随形，所得到的镜像也必然臃肿不堪。而且，随着文件层数的增加，不仅仅镜像更臃肿，其运行时性能也必然会受到影响。这一切都违背了 Docker 的最佳实践。
+
+使用 `commit` 的场合是一些特殊环境，比如入侵后保存现场等等，这个命令不应该成为定制镜像的标准做法。所以，请用 `Dockerfile` 定制镜像。
+
+### 为什么说不要使用 `import`, `export`, `save`, `load`, `commit` 来构建镜像？
+
+`commit` 命令在前一个问答已经说过，这是制作**黑箱镜像**，无法维护，不应该被使用。
+
+`import` 和 `export` 的做法，实际上是将一个*容器*来保存为 `tar` 文件，然后在导入为*镜像*。这样制作的镜像同样是**黑箱镜像**，不应该使用。而且这类导入导出会导致原有分层丢失，合并为一层，而且会丢失很多相关镜像元数据或者配置，比如 `CMD` 命令就可能丢失，导致镜像无法直接启动。
+
+`save` 和 `load` 确实是镜像保存和加载，但是这是在没有 `registry` 的情况下，手动把镜像考来考去，这是回到了十多年的 U 盘时代😭。这同样是不推荐的，镜像的发布、更新维护应该使用 `registry`。无论是自己架设私有 `registry` 服务，还是使用公有 `registry` 服务，如 [Docker Hub](https://hub.docker.com/)。
+
+### `Dockerfile` 怎么写？
+
+最直接也是最简单的办法是看官方文档。
+
+这篇文章讲述具体 `Dockerfile` 的命令语法：<https://docs.docker.com/engine/reference/builder/>
+
+然后，学习一下官方的 `Dockerfile` 最佳实践：<https://docs.docker.com/engine/userguide/eng-image/dockerfile_best-practices/>
+
+最后，去 Docker Hub 学习那些**[官方(Official)镜像](https://hub.docker.com/explore/)** `Dockerfile` 咋写的。
+
+### `Dockerfile` 就是 `shell` 脚本吧？那我懂，一行行把需要装的东西都写进去不就行了。
+
+不是这样的。
+
+> `Dockerfile` 不等于 `.sh` 脚本
+
+`Dockerfile` 确实是描述如何构建镜像的，其中也提供了 `RUN` 这样的命令，可以运行 shell 命令。但是和普通 shell 脚本还有很大的不同。
+
+`Dockerfile` 描述的实际上是镜像的每一层要如何构建，所以每一个`RUN`是一个独立的一层。所以一定要理解“分层存储”的概念。上一层的东西不会被物理删除，而是会保留给下一层，下一层中可以指定删除这部分内容，但实际上只是这一层做的某个标记，说这个路径的东西删了。但实际上并不会去修改上一层的东西。每一层都是静态的，这也是容器本身的 `immutable` 特性，要保持自身的静态特性。
+
+所以很多新手会常犯下面这样的错误，把 `Dockerfile` 当做 shell 脚本来写了：
+
+```Dockerfile
+#错误案例
+RUN yum update
+RUN yum -y install gcc
+RUN yum -y install python 
+ADD jdk-xxxx.tar.gz /tmp
+RUN cd xxxx && install
+RUN xxx && configure && make && make install
+```
+
+这是相当错误的。除了无畏的增加了很多层，而且很多运行时不需要的东西，都被装进了镜像里，比如编译环境、更新的软件包等等。结果就是产生非常臃肿、非常多层的镜像，不仅仅增加了构建部署的时间，也很容易出错。
+
+正确的写法应该是把**同一个任务的命令**放到一个 `RUN` 下，多条命令应该用 `&&` 连接，并且在最后要打扫干净所使用的环境，因为每执行一次`RUN`j就多加了一层镜像。比如下面这段摘自官方 `redis` 镜像 `Dockerfile` 的部分：
+
+```Dockerfile
+RUN buildDeps='gcc libc6-dev make' \
+    && set -x \
+    && apt-get update && apt-get install -y $buildDeps --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && wget -O redis.tar.gz "$REDIS_DOWNLOAD_URL" \
+    && echo "$REDIS_DOWNLOAD_SHA1 *redis.tar.gz" | sha1sum -c - \
+    && mkdir -p /usr/src/redis \
+    && tar -xzf redis.tar.gz -C /usr/src/redis --strip-components=1 \
+    && rm redis.tar.gz \
+    && make -C /usr/src/redis \
+    && make -C /usr/src/redis install \
+    && rm -r /usr/src/redis \
+    && apt-get purge -y --auto-remove $buildDeps
+```
+
+### 那我把所有命令都合并到一个 `RUN` 就对了吧？
+
+不是把所有命令都合为一个 `RUN`，要合理分层，以加快构建和部署。
+
+> 合理分层就是将具有**不同变更频繁程度**的层，进行拆分，让稳定的部分在基础，更容易变更的部分在表层，使得资源可以重复利用，以增加构建和部署的速度。
+
+以 [`node.js` 的应用示例镜像](https://coding.net/u/twang2218/p/docker-example/git/blob/master/node/Dockerfile)为例，其中的复制应用和安装依赖的部分，如果都合并一起，会写成这样：
+
+```Dockerfile
+COPY . /usr/src/app
+RUN npm install
+```
+
+但是，在 `node.js` 应用镜像示例中，则是这么写的：
+
+```Dockerfile
+COPY package.json /usr/src/app/
+RUN npm install
+COPY . /usr/src/app
+```
+
+从层数上看，确实多了一层。但实际上，这三行分开是故意这样做的，其目的就是合理分层，充分利用 Docker 分层存储的概念，以增加构建、部署的效率。
+
+在 `docker build` 的构建过程中，如果某层之前构建过，而且该层未发生改变的情况下，那么 `docker` 就会**直接使用缓存**，不会重复构建。因此，合理分层，充分利用缓存，会显著加速构建速度。
+
+第一行的目的是将 `package.json` 复制到应用目录，而不是整个应用代码目录。这样只有 `pakcage.json` 发生改变后，才会触发第二行 `RUN npm install`。而只要 `package.json` 没有变化，那么应用的代码改变就不会引发 `npm install`，只会引发第三行的 `COPY . /usr/src/app`，从而加快构建速度。
+
+而如果按照前面所提到的，合并为两层，那么任何代码改变，都会触发 `RUN npm install`，从而浪费大量的带宽和时间。
+
+合理分层除了可以加快构建外，还可以加快部署，要知道，`docker pull` 的时候，是分层下载的，并且已存在的层就**不会重复下载**。
+
+比如，这里的 `RUN npm install` 这一层，往往会几百 MB 甚至上 GB。而在 `package.json` 未发生变更的情况下，那么只有 `COPY . /usr/src/app` 这一层会被重新构建，并且也只有这一层会在各个节点 `docker pull` 的过程中重新下载，往往这一层的代码量只有几十 MB，甚至更小。这对于大规模的并行部署中，所节约的东西向流量是非常显著的。特别是敏捷开发环境中，代码变更的频繁度要比依赖变更的频繁度高很多，每次重复下载依赖，会导致不必要的流量和时间上的浪费。
+
+### `context` 到底是一个什么概念？
+
+`context`，**上下文**，是 `docker build` 中很重要的一个概念。构建镜像必须指定 `context`：
+
+```bash
+docker build -t xxx <context路径>
+```
+
+或者 `docker-compose.yml` 中的
+
+```yaml
+    app:
+        build:
+            context: <context路径>
+            dockerfile: dockerfile
+```
+
+这里都需要指定 `context`。
+
+`context` 是工作目录，但不要和构建镜像的`Dockerfile` 中的 `WORKDIR` 弄混，`context` 是 `docker build` 命令的工作目录。
+
+`docker build` 命令实际上是客户端，真正构建镜像并非由该命令直接完成。`docker build` 命令将 `context` 的目录上传给 `Docker` 引擎，由它负责制作镜像。
+
+在 Dockerfile 中如果写 `COPY ./package.json /app/` 这种命令，实际的意思并不是指执行 `docker build` 所在的目录下的 `package.json`，也不是指 `Dockerfile` 所在目录下的 `package.json`，而是指 `context` 目录下的 `package.json`。
+
+这就是为什么有人发现 `COPY ../package.json /app` 或者 `COPY /opt/xxxx /app` 无法工作的原因，因为它们都在 `context` 之外，如果真正需要，应该将它们复制到 `context` 目录下再操作。
+
+话说，有一些网文甚至搞笑的说要把 `Dockerfile` 放到磁盘根目录，才能构建如何如何。这都是对 `context` 完全不了解的表现。想象一下把整个磁盘**几十个 GB**当做上下文发送给 `dockerd` 引擎的情况，😱……
+
+`docker build -t xxx .` 中的这个`.`，实际上就是在指定 `Context` 的目录，而并非是指定 `Dockerfile` 所在目录。
+
+默认情况下，如果不额外指定 `Dockerfile` 的话，会将 `Context` 下的名为 `Dockerfile` 的文件作为 `Dockerfile`。所以很多人会混淆，认为这个 `.` 是在说 `Dockerfile` 的位置，其实不然。
+
+一般项目中，`Dockerfile` 可能被放置于两个位置。
+
+* 一个可能是放置于项目顶级目录，这样的好处是在顶级目录构建时，项目所有内容都在上下文内，方便构建；
+* 另一个做法是，将所有 Docker 相关的内容集中于某个目录，比如 `docker` 目录，里面包含所有不同分支的 `Dockerfile`，以及 `docker-compose.yml` 类的文件、entrypoint 的脚本等等。这种情况的上下文所在目录不再是 `Dockerfile` 所在目录了，因此需要注意指定上下文的位置。
+
+此外，项目中可能会包含一些构建不需要的文件，这些文件不应该被发送给 `dockerd` 引擎，但是它们处于上下文目录下，这种情况，我们需要使用 `.dockerignore` 文件来过滤不必要的内容。`.dockerignore` 文件应该放置于上下文顶级目录下，内容格式和 `.gitignore` 一样。
+
+```gitignore
+tmp
+db
+```
+
+这样就过滤了 `tmp` 和 `db` 目录，它们不会被作为上下文的一部分发给 `dockerd` 引擎。
+
+> 如果你发现你的 `docker build` 需要发送庞大的 Context 的时候，就需要来检查是不是 `.dockerignore` 忘了撰写，或者忘了过滤某些东西了。
+
+### `ENTRYPOINT` 和 `CMD` 到底有什么不同？
+
+`Dockerfile` 的目的是制作镜像，换句话说，实际上是准备的是主进程运行环境。那么准备好后，需要执行一个程序才可以启动主进程，而启动的办法就是调用 `ENTRYPOINT`，并且把 `CMD` 作为参数传进去运行。也就是下面的概念：
+
+```bash
+ENTRYPOINT "CMD"
+```
+
+假设有个 `myubuntu` 镜像 `ENTRYPOINT` 是 `sh -c`，而我们 `docker run -it myubuntu uname -a`。那么 `uname -a` 就是运行时指定的 `CMD`，那么 Docker 实际运行的就是结合起来的结果：
+
+```bash
+sh -c "uname -a"
+```
+
+* 如果没有指定 `ENTRYPOINT`，那么就只执行 `CMD`；
+* 如果指定了 `ENTRYPOINT` 而没有指定 `CMD`，自然执行 `ENTRYPOINT`;
+* 如果 `ENTRYPOINT` 和 `CMD` 都指定了，那么就如同上面所述，执行 `ENTRYPOINT "CMD"`；
+* 如果没有指定 `ENTRYPOINT`，而 `CMD` 用的是上述那种 shell 命令的形式，则自动使用 `sh -c` 作为 `ENTRYPOINT`。
+
+注意最后一点的区别，这个区别导致了同样的命令放到 `CMD` 和 `ENTRYPOINT` 下效果不同，因此有可能放在 `ENTRYPOINT` 下的同样的命令，由于需要 `tty` 而运行时忘记了给（比如忘记了`docker-compose.yml` 的 `tty:true`）导致运行失败。
+
+这种用法可以很灵活，比如我们做个 `git` 镜像，可以把 `git` 命令指定为 `ENTRYPOINT`，这样我们在 `docker run` 的时候，直接跟子命令即可。比如 `docker run git log` 就是显示日志。
+
+### 拿到一个镜像，如何获得镜像的 `Dockerfile` ？
+
+* 直接去 Docker Hub 上看：大多数 Docker Hub 上的镜像都会有 `Dockerfile`，直接在 Docker Hub 的镜像页面就可以看到 `Dockerfile` 的链接；
+* 如果是自己公司做的，最简单的办法就是打个电话、发个消息问一下。别看这个说法看起来很傻，不少人都宁可自己琢磨也不去问；
+* 如果没有 `Dockerfile`，一般这类镜像就不应该考虑使用了，这类黑箱似的镜像很容有有问题。如果是什么特殊原因，那继续往下看；
+* `docker history` 可以看到镜像每一层的信息，包括命令，当然黑箱镜像的 `commit` 看不见操作；
+* `docker inspect` 可以分析镜像很多细节。
+* 直接运行镜像，进入`shell`，然后根据上面的分析结果去进一步分析日志、文件内容及变化。
+* 经过分析后，自己写 `Dockerfile` 还原操作。
+
+### 在你的 LNMP 的例子中，PHP 的 `Dockerfile` 里面的 "构建依赖" 和 "运行依赖" 都是什么意思？
+
+这里所提到的是我的那个 LNMP 例子的 `php` 服务的 `Dockerfile`：<https://coding.net/u/twang2218/p/docker-lnmp/git/blob/master/php/Dockerfile>
+
+```Dockerfile
+FROM php:7-fpm
+RUN set -xe \
+# "构建依赖"
+    && buildDeps=" \
+        build-essential \
+        php5-dev \
+        libfreetype6-dev \
+        libjpeg62-turbo-dev \
+        libmcrypt-dev \
+        libpng12-dev \
+    " \
+# "运行依赖"
+    && runtimeDeps=" \
+        libfreetype6 \
+        libjpeg62-turbo \
+        libmcrypt4 \
+        libpng12-0 \
+    " \
+# "安装 php 以及编译构建组件所需包"
+    && apt-get update \
+    && apt-get install -y ${runtimeDeps} ${buildDeps} --no-install-recommends \
+# "编译安装 php 组件"
+    && docker-php-ext-install iconv mcrypt mysqli pdo pdo_mysql zip \
+    && docker-php-ext-configure gd \
+        --with-freetype-dir=/usr/include/ \
+        --with-jpeg-dir=/usr/include/ \
+    && docker-php-ext-install gd \
+# "清理"
+    && apt-get purge -y --auto-remove \
+        -o APT::AutoRemove::RecommendsImportant=false \
+        -o APT::AutoRemove::SuggestsImportant=false \
+        $buildDeps \
+    && rm -rf /var/cache/apt/* \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+这里是针对 `php` 镜像进行定制，默认情况下 `php:7-fpm` 中没有安装所需的 `mysqli`, `pdo_mysql`, `gd` 等组件，所以这里需要安装，而且，部分组件还需要编译。
+
+因此，这里涉及了两类依赖库/工具，一类是安装、编译阶段所需要的依赖；另一类是运行时所需的依赖。要记住 `Dockerfile` 的最佳实践中要求最终镜像只应该保留最小的所需依赖，因此安装构建的依赖应该在安装结束后清除，这一层只保留真正需要的运行时依赖。
+
+因此，遵循最佳实践的要求，这里区分了 `buildDeps` 和 `runtimeDeps` 后，可以在安装结束后，卸载、清理 `buildDeps` 的依赖。这样确保没有无关的东西还在该层中。
+
+### 应用代码是应该挂载宿主目录还是放入镜像内？
+
+两种方法都可以。
+
+如果代码变动非常频繁，比如开发阶段，代码几乎每几分钟就需要变动调试，这种情况可以使用 `--volume` 挂载宿主目录的办法。这样不用每次构建新镜像，直接再次运行就可以加载最新代码，甚至有些工具可以观察文件变化从而动态加载，这样可以提高开发效率。
+
+如果代码没有那么频繁变动，比如发布阶段，这种情况，应该将构建好的应用放入镜像。一般来说是使用 CI/CD 工具，如 `Jenkins`, `Drone.io`, `Gitlab CI` 等，进行构建、测试、制作镜像、发布镜像、以及分步发布上线。
+
+对于配置文件也是同样的道理，如果是频繁变更的配置，可以挂载宿主，或者动态配置文件可以使用卷。但是对于并非频繁变更的配置文件，应该将其纳入版本控制中，走 CI/CD 流程进行部署。
+
+需要注意的一点是，绑定宿主目录虽然方便，但是不利于集群部署，因为集群部署前还需要确保集群各个节点同步存在所挂载的目录及其内容。因此集群部署更倾向于将应用打入镜像，方便部署。
+
+### 为什么在 `Dockerfile` 中执行（导入 `.sql`、`service xxx start`）不管用？
+
+这是典型的对 `Dockerfile` 以及镜像、容器的基本概念不了解。
+
+> `Dockerfile` 不是 `shell` 脚本，而是定制 `rootfs` 的脚本。它并不是在运行时运行的，而是在构建时运行的。
+
+导入 `.sql` 文件到数据库，实际上修改的是数据库数据文件，而数据库的数据文件存储于卷，默认为匿名卷，因此当导入行为结束后，构建该层的容器停止运行，匿名卷被抛弃，所有导入行为都会丢失，因此所谓的导入 `.sql` 的行为在 `Dockerfile` 里实际上完全没有意义。
+
+而 `service xxxx start` 也完全没有意义，这是启动后台服务在传统虚拟机使用的命令，而Docker镜像为了达到精简在后台做了很多删减，且不说 Docker 中不用后台服务，这种启动行为对文件系统根本没影响，这仅仅是让后台在构建所用的容器中运行一下，完全没有意义。最后运行容器的时候，是另一个进程了，该没启动的东西还是不会启动。
+
+但是不要因此就盲目的得出 `Dockerfile` 无法初始化数据库的结论。所有官方镜像都考虑到了定制的问题，去看特定官方镜像的文档，基本都会看到定制、初始化的方法。
+
+比如官方 `mysql` 镜像中，可以把初始化的 `.sql` 脚本文件在 `Dockerfile` 中 `COPY` 至 `/docker-entrypoint-initdb.d/` 目录中，在容器第一次运行的时候，如果所挂载的卷是空的，那么就会依次[执行该目录中的文件](https://github.com/docker-library/mysql/blob/4dd33136c4739667a223d39b6f829beb27b235cf/5.7/docker-entrypoint.sh#L151)，从而完成数据库初始化、导入等功能。
+
+```Dockerfile
+FROM mysql:5.7
+COPY mysql-data-backup.sql /docker-entrypoint-initdb.d/
+```
+
+### 为什么基于 Alpine 的镜像那么小？我可以都换成基于 Alpine 的镜像么？
+
+`Alpine Linux` 体积小是因为它所使用的基础命令来自精简的 `busybox`，并且它使用的是简化实现的 `musl` 作为库支持，而并非完整的 `glibc`。`musl` 体积小，但是有可能有不兼容的情况，因此一般不用 `Alpine` 的镜像，除非空间受限，体积大小很关键时才会使用。
+
+过去出现过兼容问题，但是随着 `Docker` 的使用，对 `Alpine` 的需求会越来越多，更多的兼容问题会被发现、修复，所以相信在未来这应该是个不错的选择。但是如果现在就要使用，一定要进行重复的测试，确保没有会影响到自己的 `bug`。
+
+### 可以看到镜像各层的依赖关系么？
+
+镜像是分层存储的，镜像之间也可以依赖，因此利用 Docker 镜像很容易实现重复的部分复用。那么我们有没有办法可以可视化的看到镜像的依赖关系呢？
+
+很早以前，Docker 有个 `docker images --tree` 的命令的，后来随着镜像分层平面化后，这个命令就取消了。幸运的是，Nate Jones 写了一个工具，用于可视化镜像分层依赖，叫做 **dockviz**：<https://github.com/justone/dockviz>
+
+对于 Mac 平台的用户，可以很方便的使用 `brew` 来进行安装：
+
+```bash
+brew install dockviz
+```
+
+对于其它平台的用户，可以直接去[发布页面](https://github.com/justone/dockviz/releases)下载。
+
+安装好后，直接执行 `dockviz images --tree` 即可：
+
+```bash
+$ dockviz images --tree
+├─<missing> Virtual Size: 55.3 MB
+│ └─<missing> Virtual Size: 55.3 MB
+│   └─<missing> Virtual Size: 55.3 MB
+│     └─<missing> Virtual Size: 55.3 MB
+│       └─<missing> Virtual Size: 55.3 MB
+│         └─<missing> Virtual Size: 108.3 MB
+│           └─<missing> Virtual Size: 108.3 MB
+│             └─<missing> Virtual Size: 108.3 MB
+│               └─<missing> Virtual Size: 108.3 MB
+│                 └─0b5dec81616c Virtual Size: 108.3 MB Tags: nginx:latest
+└─<missing> Virtual Size: 100.1 MB
+  └─<missing> Virtual Size: 100.1 MB
+    └─<missing> Virtual Size: 123.9 MB
+      └─<missing> Virtual Size: 131.2 MB
+        ├─<missing> Virtual Size: 272.8 MB
+        │ └─<missing> Virtual Size: 274.2 MB
+        │   └─<missing> Virtual Size: 274.2 MB
+        │     └─<missing> Virtual Size: 274.2 MB
+        │       └─<missing> Virtual Size: 274.2 MB
+        │         └─<missing> Virtual Size: 274.2 MB
+        │           └─<missing> Virtual Size: 274.2 MB
+        │             └─<missing> Virtual Size: 274.2 MB
+        │               └─<missing> Virtual Size: 274.2 MB
+        │                 └─<missing> Virtual Size: 737.9 MB
+        │                   └─4551430cfe80 Virtual Size: 738.3 MB Tags: openjdk:latest
+        └─<missing> Virtual Size: 132.4 MB
+          └─<missing> Virtual Size: 132.4 MB
+            └─<missing> Virtual Size: 132.4 MB
+...
+                            └─<missing> Virtual Size: 276.0 MB
+                                └─<missing> Virtual Size: 292.4 MB
+                                └─<missing> Virtual Size: 292.4 MB
+                                    └─<missing> Virtual Size: 292.4 MB
+                                    └─72d2be374029 Virtual Size: 292.4 MB Tags: tomcat:latest
+```
+
+如果觉得文本格式太繁杂，也可以生成 [DOT 图](https://en.wikipedia.org/wiki/DOT_(graph_description_language))，使用命令 `dockviz images -d | dot -Tpng -o image_tree.png` 就可以将你的镜像依赖关系绘制成图（<https://imagebin.ca/v/3ZhFvSPeqAi0>）。
+
+## 日志问题 `(2)`
+
+### Docker 日志都在哪里？怎么收集？
+
+日志分两类，一类是 `Docker 引擎日志`；另一类是 `容器日志`。
+
+#### Docker 引擎日志
+
+`Docker 引擎日志` 一般是交给了 `Upstart`(Ubuntu 14.04) 或者 `systemd` (CentOS 7, Ubuntu 16.04)。前者一般位于 `/var/log/upstart/docker.log` 下，后者一般通过 `jounarlctl -u docker` 来读取。不同系统的位置都不一样，SO上有人总结了一份列表，我修正了一下，可以参考：
+
+ 系统 | 日志位置
+--|--
+ Ubuntu(14.04) | `/var/log/upstart/docker.log`
+ Ubuntu(16.04) | `journalctl -u docker.service`
+ CentOS 7/RHEL 7/Fedora | `journalctl -u docker.service`
+ CoreOS | `journalctl -u docker.service`
+ OpenSuSE | `journalctl -u docker.service`
+ OSX | `~/Library/Containers/com.docker.docker/Data/com.docker.driver.amd64-linux/log/d‌​ocker.log`
+ Debian GNU/Linux 7 | `/var/log/daemon.log`
+ Debian GNU/Linux 8 | `journalctl -u docker.service`
+ Boot2Docker | `/var/log/docker.log`
+
+#### 容器日志
+
+`容器的日志` 则可以通过 `docker logs` 命令来访问，而且可以像 `tail -f` 一样，使用 `docker logs -f` 来实时查看。如果使用 Docker Compose，则可以通过 `docker-compose logs <服务名>` 来查看。
+
+如果深究其日志位置，每个容器的日志默认都会以 `json-file` 的格式存储于 `/var/lib/docker/containers/<容器id>/<容器id>-json.log` 下，不过并不建议去这里直接读取内容，因为 Docker 提供了更完善地日志收集方式 - `Docker 日志收集驱动`。
+
+关于日志收集，`Docker` 内置了很多日志驱动，可以通过类似于 `fluentd`, `syslog` 这类服务收集日志。无论是 `Docker` 引擎，还是容器，都可以使用日志驱动。比如，如果打算用 `fluentd` 收集某个容器日志，可以这样启动容器：
+
+```bash
+$ docker run -d \
+    --log-driver=fluentd \
+    --log-opt fluentd-address=10.2.3.4:24224 \
+    --log-opt tag="docker.{{.Name}}" \
+    nginx
+```
+
+其中 `10.2.3.4:24224` 是 `fluentd` 服务地址，实际环境中应该换成真实的地址。
+
+具体使用 `fluentd` 的方法，请参考我写的一组 `fluentd` 日志收集的例子：
+
+<https://coding.net/u/twang2218/p/docker-example/git/tree/master/fluentd>
+
+### 不同容器的日志汇聚到 `fluentd` 后如何区分？
+
+有两种概念的区分，一种是区分开`不同容器`的日志，另一种是区分开来`不同服务`的日志。
+
+区分不同容器的日志是很直观的想法。运行了几个不同的容器，日志都送向日志收集，那么显然不希望 `nginx` 容器的日志和 `MySQL` 容器的日志混杂在一起看。
+
+但是在 Swarm 集群环境中，区分容器就已经不再是合理的做法了。因为同一个服务可能有许多副本，而又有很多个服务，如果一个个的容器区分去分析，很难看到一个整体上某个服务的服务状态是什么样子的。而且，容器是短生存周期的，在维护期间容器生存死亡是很常见的事情。如果是像传统虚拟机那样子以容器为单元去分析日志，其结果很难具有价值。因此更多的时候是对某一个服务的日志整体分析，无需区别日志具体来自于哪个容器，不需要关心容器是什么时间产生以及是否消亡，只需要以服务为单元去区分日志即可。
+
+这两类的区分日志的办法，Docker 都可以做到，这里我们以 `fluentd` 为例说明。
+
+```yaml
+version: '2'
+services:
+    web:
+        image: nginx:1.11-alpine
+        ports:
+            - "3000:80"
+        labels:
+            section: frontend
+            group: alpha
+            service: web
+            image: nginx
+            base_os: alpine
+        logging:
+            driver: fluentd
+            options:
+                fluentd-address: "localhost:24224"
+                tag: "frontend.web.nginx.{{.Name}}"
+                labels: "section,group,service,image,base_os"
+```
+
+这里我们运行了一个 `nginx:alpine` 的容器，服务名为 `web`。容器的日志使用 `fluentd` 进行收集，并且附上标签 `frontend.web.nginx.<容器名>`。除此以外，我们还定义了一组 `labels`，并且在 `logging` 的 `options` 中的 `labels` 中指明希望哪些标签随日志记录。这些信息中很多一部分都会出现在所收集的日志里。
+
+让我们来看一下 `fluentd` 收到的信息什么样子的。
+
+```json
+{
+  "frontend.web.nginx.service_web_1": {
+    "image": "nginx",
+    "base_os": "alpine",
+    "container_id": "f7212f7108de033045ddc22858569d0ac50921b043b97a2c8bf83b1b1ee50e34",
+    "section": "frontend",
+    "service": "web",
+    "log": "172.20.0.1 - - [09/Dec/2016:15:02:45 +0000] \"GET / HTTP/1.1\" 200 612 \"-\" \"curl/7.49.1\" \"-\"",
+    "group": "alpha",
+    "container_name": "/service_web_1",
+    "source": "stdout",
+    "remote": "172.20.0.1",
+    "host": "-",
+    "user": "-",
+    "method": "GET",
+    "path": "/",
+    "code": "200",
+    "size": "612",
+    "referer": "-",
+    "agent": "curl/7.49.1",
+    "forward": "-"
+  }
+}
+```
+
+如果去除 `nginx` 正常的访问日志项目外，我们就可以更清晰的看到有哪些元数据信息可以利用了。
+
+```json
+{
+  "frontend.web.nginx.service_web_1": {
+    "image": "nginx",
+    "base_os": "alpine",
+    "container_id": "f7212f7108de033045ddc22858569d0ac50921b043b97a2c8bf83b1b1ee50e34",
+    "section": "frontend",
+    "service": "web",
+    "group": "alpha",
+    "container_name": "/service_web_1",
+    "source": "stdout",
+  }
+}
+```
+
+可以看到，我们在 `logging` 下所有指定的 `labels` 都在。我们完全可以对每个服务设定不同的标签，通过标签来区分服务。比如这里，我们对 `web` 服务指定了 `service=web` 的标签，我们同样可以对数据库的服务设定标签为 `service=mysql`，这样在汇总后，只需要对 `service` 标签分组过滤即可，分离聚合不同服务的日志。
+
+此外，我们可以设置不止一个标签，比如上面的例子，我们设置了多组不同颗粒度的标签，在后期分组的时候，可以很灵活的进行组合，以满足不同需求。
+
+此外，注意 `frontend.web.nginx.service_web_1`，这是我们之前利用 `--log-opt tag=frontend.web.nginx.<容器名>` 进行设定的，其中 `<容器名>` 我们使用的是 Go 模板表达式 *&lbrace;&lbrace;.Name}}*。Go 模板很强大，我们可以用它实现非常复杂的标签。在 `fluentd` 中，`<match>` 项可以根据标签来进行筛选。
+
+这里可以唯一表示容器的，有容器 ID `container_id`，而容器名 `container_name` 也从某种程度上可以用来区分不同容器。因此进行容器区分日志的时候，可以使用这两项。
+
+还有一个 `source`，这表示了日志是从`标准输出`还是`标准错误输出`得到的，由此可以区分`正常日志`和`错误日志`。
+
+现在我们可以知道，除了容器自身输出的信息外，Docker 还可以为每一个容器的日志添加很多元数据，以帮助后期的日志处理中应对不同需求的搜索和过滤。
+
+在后期处理中，`fluentd` 中可以利用 `<match>` 或者 `<filter>` 插件根据 `tag` 或者其它元数据进行分别处理。而日志到了 ElasticSearch 这类系统后，则可以用更丰富的查询语言进行过滤、聚合。
+
+## 使用问题 `(11)`
+
+### 为什么容器一运行就退出啊？
+
+这是初学 Docker 常常碰到的问题，此时还以虚拟机来理解 Docker，认为启动 Docker 就是启动虚拟机，也没有搞明白前台和后台的区别。
+
+首先，碰到这类问题应该查日志和容器主进程退出码。
+
+检查容器日志：
+
+```bash
+docker logs <容器ID>
+```
+
+查看容器退出码：
+
+```bash
+CONTAINER ID        IMAGE                           COMMAND             CREATED             STATUS                      PORTS                                                                  NAMES
+cc2aa3f4745f        ubuntu                          "/bin/bash"         23 hours ago        Exited (0) 22 hours ago                                                                            clever_lewin
+25510a2cb171        twang2218/gitlab-ce-zh:8.15.3   "/assets/wrapper"   2 days ago          Exited (127) 2 days ago                                                                            determined_mirzakhani
+```
+
+在 `STATUS` 一栏中，可以看到退出码是多少。
+
+* 如果看到了 `Exited (127)` 那很可能是由于内存超标导致触发 `Out Of Memory` 然后被强制终止了。
+* 如果看到了 `Exited (0)`，这说明容器主进程正常退出了。
+* 如果是其他情况，应该检查容器日志。
+
+初学 Docker 的人常常会不理解既然正常怎么会退出的意思。不得不在强调一遍，Docker 不是虚拟机，容器只是进程。因此当执行 `docker run` 的时候，实际所做的只是启动一个进程，如果进程退出了，那么容器自然就终止了。
+
+那么进程为什么会退出？
+
+* 如果是执行 `service nginx start` 这类启动后台服务程序的命令，那说明还是把 Docker 当做虚拟机了。Docker 启动的是进程，因此所谓的后台服务应该放到前台，比如应该 `nginx -g 'daemon off;'` 这样直接前台启动应用才对。
+* 如果发现 `COMMAND` 一栏是 `/bin/bash`，那还是说明把 Docker 当虚拟机了。`COMMAND` 应该是应用程序，而不交互式操作界面，容器不需要交互式操作界面。此外，如果使用 `/bin/bash` 希望起一个交互式的界面，那么也必须提供给其输入和终端，因此必须加 `-it` 选项，比如 `docker run -it ubuntu /bin/bash`
+
+### 如何在 Docker  容器内使用 `docker` 命令(比如在 Jenkins 容器中)？
+
+首先，不要在 Docker 容器中安装、运行 Docker 引擎，也就是所谓的 Docker In Docker (DIND)，参考文章：
+
+<https://jpetazzo.github.io/2015/09/03/do-not-use-docker-in-docker-for-ci/>
+
+为了让容器内可以构建镜像，应该使用 `Docker Remote API` 的客户端来直接调用宿主的 Docker Engine。可以是原生的 Docker CLI （`docker` 命令），也可以是[其它语言的库](https://docs.docker.com/engine/reference/api/remote_api_client_libraries/)。
+
+#### 为 Jenkins 添加 Docker 命令行
+
+下面以定制 `jenkins` 镜像为例，使用 `Dockerfile` 添加 `docker` 命令行可执行文件，并调整权限。
+
+```Dockerfile
+FROM jenkins:alpine
+
+# 下载安装Docker CLI
+USER root
+RUN curl -O https://get.docker.com/builds/Linux/x86_64/docker-latest.tgz \
+    && tar zxvf docker-latest.tgz \
+    && cp docker/docker /usr/local/bin/ \
+    && rm -rf docker docker-latest.tgz
+
+# 将 `jenkins` 用户的组 ID 改为宿主 `docker` 组的组ID，从而具有执行 `docker` 命令的权限。
+ARG DOCKER_GID=999
+USER jenkins:${DOCKER_GID}
+```
+
+在这个例子里，我们下载了静态编译的 `docker` 可执行文件，并提取命令行安装到系统目录下。然后调整了 `jenkins` 用户的组 ID，调整为宿主 `docker` 组ID，从而使其具有执行 `docker` 命令的权限。
+
+组 ID 使用了 `DOCKER_GID` 参数来定义，以方便进一步定制。构建时可以通过 `--build-arg` 来改变 `DOCKER_GID` 的默认值，运行时也可以通过 `--user jenkins:1234` 来改变运行用户的身份。
+
+*这里的基础镜像使用的是 `jenkins:alpine`，换为非 `alpine` 的镜像 `jenkins:latest` 也是一样的。*
+
+用下面的命令来构建镜像（假设镜像名为 `jenkins-docker`）：
+
+```bash
+$ docker build -t jenkins-docker .
+```
+
+如果需要构建时调整 `docker` 组 ID，可以使用 `--build-arg` 来覆盖参数默认值：
+
+```bash
+$ docker build -t jenkins-docker --build-arg DOCKER_GID=1234 .
+```
+
+在启动容器的时候，将宿主的 `/var/run/docker.sock` 文件挂载到容器内的同样位置，从而让容器内可以通过 [unix socket](https://en.wikipedia.org/wiki/Unix_domain_socket) 调用宿主的 Docker 引擎。
+
+比如，可以用下面的命令启动 `jenkins`：
+
+```bash
+$ docker run --name jenkins \
+    -d \
+    -p 8080:8080 \
+    -v /var/run/docker.sock:/var/run/docker.sock \
+    jenkins-docker
+```
+
+在 `jenkins` 容器中，就已经可以执行 `docker` 命令了，可以通过 `docker exec` 来验证这个结果：
+
+```bash
+$ docker exec -it jenkins sh
+/ $ id
+uid=1000(jenkins) gid=999(ping) groups=999(ping)
+/ $ docker version
+Client:
+ Version:      1.12.3
+ API version:  1.24
+ Go version:   go1.6.3
+ Git commit:   6b644ec
+ Built:        Wed Oct 26 23:26:11 2016
+ OS/Arch:      linux/amd64
+
+Server:
+ Version:      1.13.0-rc2
+ API version:  1.25
+ Go version:   go1.7.3
+ Git commit:   1f9b3ef
+ Built:        Wed Nov 23 06:32:39 2016
+ OS/Arch:      linux/amd64
+/ $
+```
+
+### Docker 容器如何随系统一同启动？
+
+```bash
+--restart=always
+```
+
+参考官网文档：<https://docs.docker.com/engine/reference/commandline/run/#restart-policies-restart>
+
+### `docker stats` 显示的只有容器ID，怎么才能显示容器名字？
+
+对于之前的版本，默认的 `docker stats` 里只显示容器 ID，后来即使支持了 `--format`，为了向后兼容，而没有将其变为默认配置。`17.10` 以后的版本，`docker container stats` 默认将显示容器名称。
+
+对于以前的版本，可以修改客户端本地的 `~/.docker/config.json` 文件，加入一行配置：
+
+```json
+{
+  "statsFormat": "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}"
+}
+```
+
+这样默认格式就会改为这里指定的格式。
+
+对于不支持这个配置文件的版本，还可以直接使用 `--format` 来指定显示格式：
+
+```bash
+docker stats --format "table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}\t{{.NetIO}}\t{{.BlockIO}}\t{{.PIDs}}"
+```
+
+这种情况，建议将其添加为一个 `alias`，方便使用。
+
+对于不支持 `--format` 的老版本，则可以用下面的命令：
+
+```bash
+docker stats $(docker ps --format='{{.Names}}')
+```
+
+其缺点是不支持动态添加、删除的容器，所以不能作为持续观察。
+
+### 我用的是阿里云 `Ubuntu 14.04` 主机，内核还是`3.13`，怎么办？
+
+其实 `Ubuntu 14.04` 官方维护的内核已经到 `4.4` 了，可以通过下面的命令升级内核：
+
+```bash
+sudo apt-get install -y --install-recommends linux-generic-lts-xenial
+```
+
+### 如何动态修改内存限制？
+
+`Docker 1.10` 之后支持动态修改，使用 `docker update` 命令，如：
+
+```bash
+docker update -m 300m
+```
+
+### 经常在各种 `Docker` 命令里看到 `--label`，`label` 是什么？干什么用的？
+
+`Label` 是`键值对`，是 `metadata`，是贯穿于 `Docker` 各个资源的，包括引擎、镜像、容器、卷、网络、Swarm 节点、服务等。
+
+* 键 `key`：格式要求只可以包含字母和数字，以及`.`，`-`。推荐使用类似于 `Java` 那种反向域名格式，如 `com.example.mytag`。
+* 值 `value`：格式必须是字符串，除了普通字符串外，还可以是 `JSON`, `XML`, `CSV` 或者 `YAML`，当然，需要先进行序列化。
+
+当资源很少的时候，我们可以直接对一个个资源进行操作，但是，在管理很多资源的时候，这么做就变得不大现实。经常的需求是针对某一类的资源进行操作，而不是一个个的操作。这种情况，经常会使用 `label` 来帮助实现。
+
+当创建一个资源的时候，可以指定这个资源的 `label`（一个资源可以有很多个 `label`），而当创建了很多个资源的时候，就可以通过过滤 `label` 的键、值来得到所需的资源列表。
+
+比如，我们可以使用 `docker run` 运行一堆容器，在运行时，通过 `label` 指定容器是架构中的哪一部分。
+
+* 前端：`--label type=frontend`
+* 中间件：`--label type=middleware`
+* 存储：`--label type=storage`
+
+在后期维护时，可以直接过滤显示想要的容器，比如我们只想看前端容器运行情况：
+
+```bash
+docker ps --filter label=type=frontend
+```
+
+而且，还可以进一步的和其它命令配合操作这组容器，比如我们需要停止所有前端容器：
+
+```bash
+docker stop $(docker ps -f label=type=frontend)
+```
+
+使用 `label` 在集群调度中也非常有用。
+
+比如，我们可以在不同的 Docker 主机的引擎 `dockerd` 参数中，通过 `label` 来加入存储类型的信息，如：
+
+* 存储类型为 `SSD`：`--label storage=ssd`
+* 存储类型为 `HDD`：`--label storage=hdd`
+
+对于数据库的服务，我们自然希望跑在 `SSD` 上以获得更大的性能，而日志、备份服务则希望跑在 `HDD` 上获得更高的容量。那么可以这么做：
+
+```bash
+docker service create \
+    --name mysql \
+    --constraint 'engine.labels.storage == ssd' \
+    mysql
+```
+
+#### 添加`label`以及过滤
+
+添加 `label` 大多格式都是在创建、修改资源时，使用 `--label <key>=<value>` 参数（部分命令提供了 `-l` 缩写形式）。`value` 可以省略，格式为 `--label <key>`。如果需要定义多组 `label`，只需多组 `--label` 即可。
+
+过滤 `label` 则大多发生在列表命令中，使用 `--filter label=<key>=<value>`，或者对于不关心 `value` 的情况，`--filter label=<key>`（部分命令提供了 `-f` 的缩写形式）。
+
+下面的列表，列出了支持 `label` 的命令（除非特殊声明，"添加"命令使用 `--label` 选项添加 `label`；"过滤"命令使用 `--filter` 过滤`label`）：
+
+* Docker 引擎
+    * 添加：`dockerd`： <https://docs.docker.com/engine/reference/commandline/dockerd/>
+* 镜像
+    * 添加：
+        * `docker build`：<https://docs.docker.com/engine/reference/commandline/build/>
+        * `Dockerfile` 中的 `LABEL`（会继承`FROM`镜像的`LABEL`）：<https://docs.docker.com/engine/reference/builder/#/label>
+    * 过滤：`docker images`：<https://docs.docker.com/engine/reference/commandline/images/#/filtering>
+* 容器
+    * 添加：`docker create`：<https://docs.docker.com/engine/reference/commandline/create/>
+        * 除了 `--label` 外，`docker create` 还支持使用选项 `--label-file` 从文件中加载 `label`
+    * 添加：`docker run`：<https://docs.docker.com/engine/reference/commandline/run/#/set-metadata-on-container--l---label---label-file>
+        * 除了 `--label` 外，`docker run` 还支持使用选项 `--label-file` 从文件中加载 `label`
+    * 过滤：`docker ps`：<https://docs.docker.com/engine/reference/commandline/ps/#/label>
+* 卷
+    * 添加：`docker volume create`：<https://docs.docker.com/engine/reference/commandline/volume_create/>
+    * 过滤：`docker volume ls`：<https://docs.docker.com/engine/reference/commandline/volume_ls/#/filtering>
+* 网络
+    * 添加：`docker network create`：<https://docs.docker.com/engine/reference/commandline/network_create/>
+    * 过滤：`docker network ls`：<https://docs.docker.com/engine/reference/commandline/network_ls/#/filtering>
+* Swarm 节点
+    * `docker node update`：<https://docs.docker.com/engine/reference/commandline/node_update/#/add-label-metadata-to-a-node>
+        * 添加：`--label-add`
+        * 删除：`--label-rm`
+    * 过滤：`docker node ls`：<https://docs.docker.com/engine/reference/commandline/node_ls/#/filtering>
+    * 过滤：`docker node ps`：<https://docs.docker.com/engine/reference/commandline/node_ps/#/label>
+* 服务
+    * 添加：`docker service create`：<https://docs.docker.com/engine/reference/commandline/service_create/#/set-metadata-on-a-service--l---label>
+        * 除了 `--label` 外，还可以通过 `--container-label` 来添加容器 `label`
+    * `docker service update`：<https://docs.docker.com/engine/reference/commandline/service_update/>
+        * 添加容器 `label`：`--container-label-add`
+        * 删除容器 `label`：`--container-label-rm`
+        * 添加服务 `label`：`--label-add`
+        * 删除服务 `label`：`--label-rm`
+    * 过滤：`docker service ls`：<https://docs.docker.com/engine/reference/commandline/service_ls/#/label>
+
+除了上述资源外，`docker events` 也可以使用 `label` 过滤结果：<https://docs.docker.com/engine/reference/commandline/events/>
+
+#### 集群调度约束
+
+* 一代 Swarm：使用环境变量添加约束
+    * `docker run`：`-e constraint:storage==sdd`：<https://docs.docker.com/swarm/scheduler/filter/#/how-to-write-filter-expressions>
+    * `docker-compose.yml`：使用 `environment` 来进行约束：<https://docs.docker.com/compose/swarm/#/manual-scheduling>
+
+如：
+
+```yaml
+version: "2"
+services:
+    redis:
+        image: redis
+        environment:
+            - "constraint:storage==ssd"
+```
+
+* 二代 Swarm
+    * `docker service create`：`--constraint value`：<https://docs.docker.com/engine/reference/commandline/service_create/#/specify-service-constraints---constraint>
+
+如下面的例子中，使用 `Swarm 节点` 的 `label` 进行约束（注意，这次用的不是`引擎`的`label`）：
+
+```bash
+docker service create \
+    --name web \
+    --constraint 'node.labels.type == frontend' \
+    nginx
+```
+
+### 都说不要用 `root` 去运行服务，但我看到的 `Dockerfile` 都是用 `root` 去运行，这不安全吧？
+
+并非所有官方镜像的 `Dockerfile` 都是用 `root` 用户去执行的。比如 `mysql` 镜像的执行身份就是 `mysql` 用户；`redis` 镜像的服务运行用户就是 `redis`；`mongo` 镜像内的服务执行身份是 `mongo` 用户；`jenkins` 镜像内是 `jenkins` 用户启动服务等等。所以说 “都是用 `root` 去运行” 是不客观的。
+
+当然，这并不是说在**容器内**使用 `root` 就非常危险。容器内的 `root` 和宿主上的 `root` 不同，容器内的 `root` 虽然 `uid` 也默认为 `0`，但是却处于一个隔离的命名空间，而且被去掉了大量的特权。容器内的 `root` 是一个没有什么特权的用户，危险的操作基本都无法执行。
+
+不过，如果用户可以打破这个安全保护，那就是另外一回事了。比如，如果用户挂载了宿主目录给容器，这就是打通了一个容器内的 `root` 操控宿主的一个通道，使得容器内的 `root` 可以修改所挂载的目录下的任何文件。
+
+因为当前版本的 Docker 中，**默认情况下**容器的 `user namespace` 并未开启，所以容器内的用户和宿主用户共享 `uid` 空间。容器内的 `uid` 为 `0` 的 `root`，就被系统视为 `uid=0` 的宿主 `root`，因此磁盘读写时，具有宿主 `root` 同等读写权限。这也是为什么一般不推荐挂载宿主目录、特别是挂载宿主系统目录的原因之一。这一切只要定制镜像的时候，容器内不使用 `root` 启动服务就没这个问题了。
+
+当然，上面说的问题只是默认情况下 `user namespace` 不会启用的问题。`dockerd` 有一个 `--userns-remap` 参数，只要配置了这个参数，就可以确保容器内的 `uid` 是独立命名空间，容器内的 `uid` 变到宿主的时候，会被 `remap` 到另一个范围。因此，容器内的 `uid=0` 的 `root` 将完全跟 `root` 没有任何关系，仅仅是个普通用户而已。
+
+相关信息请参考官方文档：
+
+* `--userns-remap` 的介绍：<https://docs.docker.com/engine/reference/commandline/dockerd/#/daemon-user-namespace-options>
+* Docker 安全：<https://docs.docker.com/engine/security/security/>
+
+### 我在容器里运行 `systemctl start xxx` 怎么报错啊？
+
+如果在容器内使用 `systemctl` 命令，经常会发现碰到这样的错误：
+
+```bash
+Failed to get D-Bus connection: Operation not permitted
+```
+
+这很正常，因为 `systemd` 是完整系统的服务启动、维护的系统服务程序，而且需要特权去执行。但是容器不是完整系统，既没有配合的服务，也没有特权，所以自然用不了。
+
+如果你碰到这样的问题，只能再次提醒你，**Docker 不是虚拟机**。试图在容器里执行 `systemctl` 命令的，大多都是还没有搞明白容器和虚拟机的区别，因为看到了可以有 Shell，就以为这是个虚拟机，试图重复自己在完整系统上的体验。这是用法错误，**不要把 Docker 当做虚拟机去用，容器有自己的用法**。
+
+> Docker 不是虚拟机，容器只是受限进程。
+
+容器内根本不需要后台服务，也不需要服务调度和维护，自然也不需要 `systemd`。容器只有一个主进程，也就是应用进程。容器的生存周期就是围绕着这个主进程而存在的，所以所试图启动的后台服务，应该改为直接在前台运行，根本不需要也不应该使用 `systemctl` 命令去在后台加载。日志之类的也是直接从 `stdout`/`stderr` 输出，而不是走 `journald`。
+
+### 容器内的时间和宿主不一致，怎么同步啊？
+
+问这个问题的人往往混淆了**时间**和**时区**的概念。
+
+**时间**是从 `epoch` 到当前的秒数或者毫秒数，全球都一样，这是绝对值；而**时区**则是由于地理位置差异、行政区划导致各地显示时间的差异。
+
+对于 Docker 容器而言，根本不存在宿主和容器的时间差异问题，因为他们使用的是同一个内核、同一个时钟，二者完全一样，所以根本不存在同步问题。还是那句话 **Docker 不是虚拟机**。
+
+所看到的差异，如果细心一点，很可能会发现其实根本不是**时间**同步问题：
+
+```bash
+$ docker run -it ubuntu bash
+root@08c6ad41f343:/# date
+Tue Dec 13 01:36:37 UTC 2016
+```
+
+注意到 `UTC` 了么，这是说使用的是国际标准 `0 时区` 的时间显示，因此这只是显示所用的时区设置差异问题。而且之前如果稍微注意一下，就会发现所谓时间不一致，实际上是整整差了 `8` 个小时，还记得中学地理课上讲的中国时区是多少么？是 `+8 时区`，所以自然和 `0 时区` 差了 `8` 个小时。应该很快就意识到是自己的时区设错了（或者偷懒没设）导致。
+
+解决办法很简单，设置时区即可。一般情况直接设置环境变量 `TZ` 就够了，比如：
+
+```bash
+$ docker run -it -e TZ=Asia/Shanghai debian bash
+root@8e6d6c588328:/# date
+Tue Dec 13 09:41:21 CST 2016
+```
+
+看到了么？时区调整到了 `CST`，也就是`China Standard Time - 中国标准时间`，因此显示就正常了。
+
+不过并非所有系统都可以如此方便的设置时区。可以直接使用 `TZ=Asia/Shanghai` 环境变量修改时区的系统有：
+
+* `centos` (`5`, `6`, `7`)
+* `debian` (`7`, `8`, `9`)
+* `fedora` (`24`, `25`, `26`)
+* `ubuntu` (`14.04`)
+
+而下面的这些系统可能出于镜像体积的考虑，去掉了时区的软件包 `tzdata`，因此需要在 `Dockerfile` 中先行安装时区包。
+
+* `ubuntu`: (`16.04`, `17.04`, `17.10`) (~15MB)
+  * `Dockerfile`:
+
+```Dockerfile
+  RUN set -xe \
+    && apt-get update \
+    && apt-get install tzdata locales \
+    && rm -rf /var/lib/apt/lists/*
+```
+
+* `alpine` (~1.3MB)
+  * `Dockerfile`: `RUN apk --no-cache add tzdata`
+* `opensuse` (~12MB)
+  * `Dockerfile`:
+
+```Dockerfile
+RUN set -xe \
+    && zypper --non-interactive refresh \
+    && zypper --non-interactive -qn install --no-recommends timezone \
+    && zypper --non-interactive clean -a
+```
+
+* `clearlinux` (~280MB ...😂)
+  * `Dockerfile`:
+
+```Dockerfile
+RUN set -xe \
+    && swupd bundle-add sysadmin-basic \
+    && rm -rf /var/lib/swupd/*
+```
+
+
+上面列表除了列出系统外，还给出了每个系统需要添加到 `Dockerfile` 的安装包的命令，以及安装后镜像体积增加的大小。其中 `clearlinux` 不能单个安装软件包，所以体积增加的有些夸张，因此更好地办法是直接 `COPY` 时区信息进镜像。
+
+> 注意：`ubuntu:16.04` 以后的版本，在 2017年4月10 日以后，已经去除 `tzdata`，因此要改变其时区需要进行时区安装操作，而**不是**像以前那样只需配置 `TZ` 环境变量即可。
+> 不过大部分**官方镜像**是基于 `debian` 的，因此它们**不受影响**。
+>
+> 参考 issue:
+> * https://bugs.launchpad.net/cloud-images/+bug/1682622
+> * https://bugs.launchpad.net/cloud-images/+bug/1682305
+> * https://github.com/docker-library/official-images/issues/2863
+> * https://github.com/docker-library/official-images/issues/2856
+
+这仅仅是调整容器内系统环境的时区，大部分程序都会遵循这个标准。但是有些应用并不遵守这类约定，会使用自己的时区设置。
+
+一般应用、服务的配置文件里一般都有时区选项，应该根据自己需求把中国时区配上。
+
+比如，PHP 配置文件中的：
+
+```ini
+[Date]
+date.timezone = Asia/Shanghai
+```
+
+再比如 `mysqld` 中的参数 `--timezone=Asia/Shanghai`；`Java` 的 `-Duser.timezone=Asia/Shanghai` `JVM` 参数，都可以指定上层应用时区，而不依赖于系统默认时区，这也是推荐的做法。避免系统部署时受系统时区影响，这在全球云服务器环境中其实很常见，因此尽量在应用层设置好。很多应用都有自己的时区设置，应该去了解一下并且进行设置，不要总用默认值。
+
+一些人在配置服务的时候很懒惰，只要默认能用即可，而不会一一检查每一个配置的默认值是否和自己期望一致，这是很不专业的做法，正是这种不专业才导致了出现了这种问题。所以做事情，一定要让自己以专业的视角和态度看问题。
+
+### 我想让我的程序平滑退出，为什么截获 `SIGTERM` 信号不管用啊？
+
+`docker stop`, `docker service rm` 在停止容器时，都会先发 `SIGTERM` 信号，等待一段时间（默认为 10 秒）后，如果程序没响应，则强行 `SIGKILL` 杀掉进程。
+
+这样应用进程就有机会平滑退出，在接收到 `SIGTERM` 后，可以去 Flush 缓存、完成文件读写、关闭数据库连接、释放文件资源、释放锁等等，然后再退出。所以试图截获 `SIGTERM` 信号的做法是对的。
+
+但是，可能在截获 `SIGTERM` 时却发现，却发现应用并没有收到 `SIGTERM`，于是盲目的认为 Docker 不支持平滑退出，其实并非如此。
+
+还记得我们提到过，**Docker 不是虚拟机，容器只是受限进程，而一个容器只应该跑一个主进程**的说法么？如果你发现你的程序没有截获到 `SIGTERM`，那就很可能你没有遵循这个最佳实践的做法。因为 `SIGTERM` 只会发给主进程，也就是容器内 `PID` 为 `1` 的进程。
+
+至于说主进程启动的那些子进程，完全看主进程是否愿意转发 `SIGTERM` 给子进程了。所以那些把 Docker 当做虚拟机用的，主进程跑了个 `bash`，然后 exec 进去启动程序的，或者来个 `&` 让程序跑后台的情况，应用进程必然无法收到 `SIGTERM`。
+
+还有一种可能是在 `Dockerfile` 中的 `CMD` 那行用的是 `shell` 格式写的命令，而不是 `exec` 格式。还记得前面提到过的 `shell` 格式的命令，会加一个 `sh -c` 来去执行么？因此使用 `shell` 格式写 `CMD` 的时候，`PID` 为 `1` 的进程是 `sh`，而它不转发信号，所以主程序收不到。
+
+明白了道理，解决方法就很简单，换成 `exec` 格式，并且将主进程执行文件放在第一位即可。这也是为什么之前推荐 `exec` 格式的原因之一。
+
+# Docker Compose 相关问题 `(2)`
+
+## 你那个 `LNMP` 例子中的 `docker-compose.yml` 中有好多 `networks`，都是什么意思啊？
+
+我写的 `LNMP` 多容器互通的例子：<https://coding.net/u/twang2218/p/docker-lnmp/git>
+
+前面 `services` 下的每个服务下面的 `networks`，是说这个服务要接到哪个网络上。
+而最后的那个总的`networks`下面的，是这几个网络的定义。
+
+也就是说，`nginx` 接到了名为 `frontend` 的前端网络；`mysql` 接到了名为 `backend` 的后端网络；而作为中间的 `php` 既需要和 `nginx` 通讯，又需要和 `mysql` 通讯，所以同时连接了 `frontend` 和 `backend` 网络。由于 `nginx` 和 `mysql` 不处于同一网络，所以二者无法通讯，起到了隔离的作用。
+
+关于 Docker 自定义网络，你可以看一下官方文档的介绍：
+<https://docs.docker.com/engine/userguide/networking/dockernetworks/#/user-defined-networks>
+
+关于在 Docker Compose 中使用自定义网络的部分，可以看官方这部分文档：
+<https://docs.docker.com/compose/networking/>
+
+## 使用 Compose 的时候碰到 "An HTTP request took too long to complete...." 错误，怎么办？
+
+Compose 的请求超时时限是可以配置的：
+
+```bash
+export COMPOSE_HTTP_TIMEOUT=120
+```
+
+不过，这不是问题的解决办法，因为一般情况下不应该超时，超时的原因是因为所访问的 Docker Engine 过于繁忙，而无法响应 Compose 的请求。应该检查具体 Docker Engine 出了什么问题，是不是还在用着 `CentOS` 默认的 `device mapper` 的 `loop` 设备，等等。
+
+# Docker Swarm 相关问题 `(8)`
+
+## 我的 Docker 版本是 1.12，请问我跑的是一代 Swarm 还是二代 Swarm 啊？
+
+……自己运行的 Swarm 怎么会连自己都不知道跑的是啥？😅
+
+首先，至于是运行的一代 Swarm 还是二代 Swarm，单看版本是没意义的。**Docker 1.12+ 的版本同时支持一代 Swarm 和二代 Swarm**。
+
+如果是使用容器形式运行的 Swarm，也就是 `docker run swarm` 形式构建的 Swarm，这是**一代 Swarm**，也被称为 **Docker Swarm**。
+
+如果是使用内置命令形式构建的 Swarm，也就是使用命令 `docker swarm init` 形式构建的 Swarm，这是内置的 Swarm，是**二代 Swarm**，也被称为 **Docker Swarm Mode**。
+
+## Swarm环境中怎么指定某个容器在指定的宿主上运行呢？
+
+每个 Docker Host 建立时都可以通过 `--label` 指定其 Docker 引擎的标签，比如：
+
+```bash
+dockerd \
+    --label com.example.environment="production" \
+    --label com.example.storage="ssd"
+```
+
+> 注意，上面的配置参数应该配置在 `Docker` 引擎的配置文件里修改，如 `docker.service`，而不是简单的命令行执行……
+
+然后运行容器时，使用环境变量约束调度即可。可以使用 Compose 文件的 `environment` 配置，也可以使用 `docker run` 的 `-e` 环境变量参数。下面以 Compose 配置文件为例：
+
+```yaml
+version: "2"
+services:
+  mongodb:
+    image: mongo:latest
+    environment:
+      - "constraint:com.example.storage==ssd"
+```
+
+这样这个 `mongodb` 的服务就会运行在标记为 `com.example.storage="ssd"` 的宿主上运行。
+
+## 为什么 Swarm 集群的 overlay network 跨宿主无法互访？
+
+首先，检查建立 Swarm 的时候，对其它节点所宣告的本节点的地址是否正确。
+
+对于单网卡、单IP的宿主，Swarm 会自动选择网卡地址，但是多网卡、多IP的宿主，就必须手动宣告地址。
+
+* 对于一代 Swarm 而言，检查一下 `dockerd` 的配置中，`--cluster-advertise` 地址是否配置正确。
+* 对于二代 Swarm，则检查一下创建、加入 Swarm 的时候，`--advertise-addr` 是否填写正确。
+
+宣告地址必须是全集群可以互访的，由于该地址端口是 `Docker Remote API` 端口，所以可以用 `curl` 来连接其它节点，以判断互通性。
+
+然后，检查宿主间的网络互通问题，特别是宿主的防火墙开启的情况下，检查下列服务端口有没有放开：
+
+* `7946/{udp,tcp}`
+* `4789/{udp,tcp}`
+* {`2375`,`2376`,`2377`,`3375`,`3376`}/`tcp` （具体端口取决于实际 `Swarm` 或 `Engine` 守护端口)
+
+可以通过 `telnet`, `curl` 之类的工具确保上述端口可以互访。
+
+如果还是有问题，可以进一步启用各个节点的 Docker 引擎的调试模式。和配置 `--insecure-registry` 的方法一样，编辑 Docker 配置文件，在 `dockerd` 后添加 `-D` 参数。然后重新启动 Docker 引擎，建立集群、网络、服务。如果问题重现，可以分析 `Docker` 引擎的日志，具体查看日志的方法见前面的问答。
+
+需要注意的是，在 `1.13` 以前的版本中，跨宿主的情况下，无法在容器内 `ping` 到另一个服务的 `VIP`，这种情况，可以 `ping tasks.<服务名>`，来跳过 `VIP` 进行 `ping`。
+
+参考：
+
+<https://docs.docker.com/swarm/plan-for-production/>
+
+<https://docs.docker.com/engine/swarm/swarm-tutorial/#/open-ports-between-the-hosts>
+
+<https://docs.docker.com/engine/swarm/networking/>
+
+## Docker 二代Swarm (既 Swarm Mode)，`docker service create` 不可以使用 `-v` 那怎么使用卷(Volume)？
+
+从二代 Swarm 开始，将使用 `--mount` 参数来进行卷挂载，并且对语义进行更明确的划分。
+
+挂载分两种：
+
+* 绑定挂载 `bind-mount`：这类挂载将宿主目录/文件绑定到容器的某个位置。这类挂载需要注意宿主和容器的不同uid导致的权限、访问控制差异问题。
+* 数据卷 `data volumes`：这类挂载是之前推荐使用的卷。卷可以分为命名卷`named volume`以及匿名卷`anonymous volume`
+
+挂载参数的格式基本上为 `--mount <key1>=<value1>[,<key2>=<value2>,...]`。
+
+主要参数有：
+
+* `type`: 如之前所说，两种类型： `volume` 和 `bind`。如果不指定 `type`，默认为 `volume`；
+* `src` 或 `source`：源：
+    * 如果 `type=volume`，`src` 则是卷的名字，是可选项。如果存在就是命名卷，如果没指定 `src` 则是匿名卷；
+    * 如果 `type=bind`，`src` 是宿主本地的路径；
+* `dst` 或 `destination` 或 `target`：将在容器内挂载的路径。如果路径不存在，会在挂载前自动建立路径。
+* `readonly` 或 `ro`：是否让该挂载为只读，默认是读写。
+
+除此之外还有一些常见的参数可以设置：
+
+* `volume-driver`：指定卷驱动，默认是 `local`，可以通过这个参数指定其它（如 `flocker`, `glusterfs`, `ceph`）之类的驱动；
+* `volume-label`：指定卷的元数据(metadata)，从而方便过滤操作；
+* `volume-opt`：不同的卷驱动可能需要额外的参数，这个选项可以指定这些参数。
+
+`--mount` 和 `--volume` 有一些差异需要注意：
+
+* `--mount` 可以直接使用卷，而无需事先使用 `docker volume create` 来创建卷，并且可以多组不同驱动的卷；
+* `--mount` 如果 `type=bind` 的话，宿主必须存在指定目录，否则报错。而 `--volume` 则在宿主不存在该路径时，在宿主创建一个空目录来进行绑定。
+
+举几个例子：
+
+挂载命名卷：
+
+```bash
+docker service create \
+  --name my-service \
+  --replicas 3 \
+  --mount type=volume,source=my-volume,destination=/path/in/container,volume-label="color=red",volume-label="shape=round" \
+  nginx:alpine
+```
+
+挂载匿名卷：
+
+```bash
+docker service create \
+  --name my-service \
+  --replicas 3 \
+  --mount type=volume,destination=/path/in/container \
+  nginx:alpine
+```
+
+绑定宿主目录
+
+```bash
+docker service create \
+ --name my-service \
+ --mount type=bind,source=/path/on/host,destination=/path/in/container \
+ nginx:alpine
+```
+
+参考官网文档：<https://docs.docker.com/engine/reference/commandline/service_create/#/add-bind-mounts-or-volumes>
+
+## 对于两节点集群来说，`--replicas=2` 和 `--mode=global` 是不是一个意思？
+
+首先，二者语义就不同。
+
+* `--replicas=2`，是要求该服务有2个副本，无论集群多少个节点，也不在乎这两个副本是不是都跑在一个宿主上，所以无法确保每个节点一个副本；
+* `--mode=global`，是要求服务在集群每一个节点上跑一个副本。
+
+现象上也不一样，`--replicas=2` 是要确保副本为2个。那么如果一个节点挂了，会在另一个节点上在起一个副本，从而确保副本数为2。而对于 `--mode=global` 来说，如果一个节点挂了，不会再另一个节点上起一个副本。
+
+## 一代 Swarm 的时候可以用 `docker run` 啊，二代怎么又弄个 `docker service create` 出来？为什么要多此一举？
+
+因为 `docker run` 和 `docker service create` 是两个不同理念的东西。
+
+一代 Swarm 中，将 Swarm 集群视为一个巨大的 Docker 主机，本质上和单机没有区别，都是直接调度运行容器。因此依旧使用单机的 `docker run` 的方式来启动特定容器。
+
+二代 Swarm 则改变了这个理念，增加了服务栈(`Stack`)、服务(`Service`)、任务(`Task`) 的概念。在二代 Swarm 中，一组服务可以组成一个整体进行部署，也就是部署服务栈，这相当于是之前的 Docker Compose 所完成的目的。但是这次，是真正的针对**服务**的。
+
+一个**服务**并非一个**容器**，一个服务可以有多个副本**任务**，每个任务对应一个容器。这个概念在一代 Swarm 和单机环境中是没有的，因此 Docker Compose 为了实现服务的概念，用了各种办法去模拟，包括使用 `labels`，使用网络别名等等，但是本质上，依旧是以容器为单位进行运行，也就是本质上还是一组 `docker run`。
+
+正是由于二代 Swarm 中用户操作的单元是服务，所以传统的以容器为中心的 `docker run` 就不再适用，因此有新的一组针对服务的命令，`docker service`。
+
+## `docker service ps` 里面总是有一堆失败或者shutdown的历史容器，怎么删啊？
+
+使用了一段时间二代 Swarm 后，特别是维护了几次服务后，会发现 `docker service ps` 中显示了很多之前失败的容器记录，很是烦人。
+
+```bash
+$ docker service ps web                                                                                                       [e641012]
+NAME                    IMAGE                NODE  DESIRED STATE  CURRENT STATE                ERROR                             PORTS
+web.1.uultetkovwch      nginx:1.11.3-alpine  moby  Running        Running 43 seconds ago
+\_ web.1.etb0jpr21mhe  nginx:1.11.2-alpine  moby  Shutdown       Rejected about a minute ago  "No such image: nginx:1.11.2-a…"
+\_ web.1.uhyl9158ldf9  nginx:1.11.2-alpine  moby  Shutdown       Rejected about a minute ago  "No such image: nginx:1.11.2-a…"
+\_ web.1.mwallx77rc3m  nginx:1.11.1-alpine  moby  Shutdown       Shutdown about a minute ago
+\_ web.1.zmyvszvv21ak  nginx:1.10-alpine    moby  Shutdown       Shutdown 3 minutes ago
+web.2.dp0imr8kbmad      nginx:1.11.3-alpine  moby  Running        Running 43 seconds ago
+\_ web.2.0xzwj9o8kfzn  nginx:1.11.2-alpine  moby  Shutdown       Rejected about a minute ago  "No such image: nginx:1.11.2-a…"
+\_ web.2.mk3g1l5js4ph  nginx:1.11.2-alpine  moby  Shutdown       Rejected about a minute ago  "No such image: nginx:1.11.2-a…"
+\_ web.2.v9x98vxma1q3  nginx:1.11.2-alpine  moby  Shutdown       Rejected 2 minutes ago       "No such image: nginx:1.11.2-a…"
+\_ web.2.vo5mvyux3vok  nginx:1.11.2-alpine  moby  Shutdown       Rejected 2 minutes ago       "No such image: nginx:1.11.2-a…"
+web.3.cc3mrji1dlz2      nginx:1.11.3-alpine  moby  Running        Running 42 seconds ago
+\_ web.3.uvubn2pdceaa  nginx:1.11.2-alpine  moby  Shutdown       Rejected about a minute ago  "No such image: nginx:1.11.2-a…"
+\_ web.3.mt7xwl4a0bii  nginx:1.11.2-alpine  moby  Shutdown       Rejected 2 minutes ago       "No such image: nginx:1.11.2-a…"
+\_ web.3.cdseizjlnzoj  nginx:1.11.2-alpine  moby  Shutdown       Rejected 2 minutes ago       "No such image: nginx:1.11.2-a…"
+\_ web.3.kwlz5mxbu2t6  nginx:1.11.2-alpine  moby  Shutdown       Rejected 2 minutes ago       "No such image: nginx:1.11.2-a…"
+web.4.zoadbqu3wtzf      nginx:1.11.3-alpine  moby  Running        Running 42 seconds ago
+\_ web.4.u6p58nzxlib9  nginx:1.11.2-alpine  moby  Shutdown       Rejected about a minute ago  "No such container: web.4.u6p5…"
+\_ web.4.kf420b73lwcc  nginx:1.11.2-alpine  moby  Shutdown       Rejected about a minute ago  "No such image: nginx:1.11.2-a…"
+\_ web.4.tzzmc1zuffn7  nginx:1.11.2-alpine  moby  Shutdown       Rejected 2 minutes ago       "No such image: nginx:1.11.2-a…"
+\_ web.4.mccsks74u370  nginx:1.11.1-alpine  moby  Shutdown       Shutdown 2 minutes ago
+web.5.u0i5cnh0m5jb      nginx:1.11.3-alpine  moby  Running        Running 39 seconds ago
+\_ web.5.xzv6o5hoxjay  nginx:1.11.1-alpine  moby  Shutdown       Shutdown 41 seconds ago
+\_ web.5.f0ssiwebempk  nginx:1.10-alpine    moby  Shutdown       Shutdown 3 minutes ago
+```
+
+可以看到那些历史上运行过的容器，它们当然已经停止运行，保留在这里是为了帮助进行服务排障，默认情况下，会保留最后 5 个容器历史，其余的会被删除。这个参数可以在集群建立时(`docker swarm init`)或者更新时(`docker swarm update`)，可以通过参数 `--task-history-limit` 来调整。
+
+但是不要因为只是看着乱，就将历史记录设的很少，因为历史记录的存在是有原因的，可以通过历史记录来进行排障。如果没有这些信息，在将来维护出现问题的时候，故障根本无从查起。
+
+如果只是觉得看着乱而不想显示，直接用 `--filter` 加过滤即可。
+
+```bash
+$ docker service ps -f 'desired-state=running' web                                                                            [e641012]
+NAME                IMAGE                NODE  DESIRED STATE  CURRENT STATE           ERROR  PORTS
+web.1.uultetkovwch  nginx:1.11.3-alpine  moby  Running        Running 11 minutes ago
+web.2.dp0imr8kbmad  nginx:1.11.3-alpine  moby  Running        Running 11 minutes ago
+web.3.cc3mrji1dlz2  nginx:1.11.3-alpine  moby  Running        Running 11 minutes ago
+web.4.zoadbqu3wtzf  nginx:1.11.3-alpine  moby  Running        Running 11 minutes ago
+web.5.u0i5cnh0m5jb  nginx:1.11.3-alpine  moby  Running        Running 10 minutes ago
+```
+
+## 怎么才能让 `docker service create` 创建的服务正常退出时不重启啊？
+
+有些时候会有这样的需求，比如服务是由应用层的远程控制指令关闭的，这种进程退出是正常行为，并非错误。但是默认情况下，只要容器退出，引擎就视为异常，就会尝试重新调度启动这个容器。这会导致明明关了的服务，又被启动了。
+
+这种情况可以使用 `--restart-condition=on-failure` 参数，这样只有在主进程退出码为 **非 0** 的时候，才会重启，而正常退出（`exited code = 0`) 无需重启。
+
+# Docker Machine 相关问题 `(5)`
+
+## 打开命令行后，看到下载啥 `boot2docker.iso`，然后总是超时失败，怎么办？
+
+装了 Docker Toolbox 的 Windows 用户，或者第一次使用 `docker-machine` 创建本地 VirtualBox 虚拟机的用户，经常会看到这样的报错：
+
+```bash
+(default) Latest release for github.com/boot2docker/boot2docker is v17.06.2-ce
+(default) Downloading /Users/jessie/.docker/machine/cache/boot2docker.iso from https://github.com/boot2docker/boot2docker/releases/download/v17.06.2-ce/boot2docker.iso...
+```
+
+然后经过漫长的等待后，说超时、或者下载失败，最后创建虚拟机失败。
+
+这首先还是先去*感谢*伟大的墙及其亲属，没有他们的作祟，这个错误基本出现不了。
+
+众所周知，我们通常所说的 Docker 是基于 Linux 内核的。因此在 Windows 环境中，Docker Toolbox 会使用 Docker Machine 建立一个名为 `default` 的 VirtualBox Linux 虚拟机，来进行 Docker 操作。由于只需要运行 Docker，因此这个 Linux 可以非常精简，不需要任何复杂的系统功能。由于历史原因，这个微缩版的 Linux 系统是被称为 `boot2docker` 的系统。
+
+而 Docker Machine 在建立虚拟机的时候，会从[网上](https://github.com/boot2docker/boot2docker/releases)检查 Docker 最新的版本是什么，如果发现本地缓存中的 ISO 不存在，或者不是最新版本，那就会去从官网下载最新版本的 ISO 文件。而这个文件，就是提示中所说的 `boot2docker.iso` 文件。由于伟大的墙经常做出刷出镜率的行为，从 GitHub 上下载东西经常会被干扰和阻断。这就是为啥经常出现超时、或者无法访问的问题。
+
+解决办法很简单，直接下不行，那就手工翻墙下……😹
+
+当然，还有另一个办法，可以用迅雷下载。迅雷拥有*细思极恐*的下载缓存，基本用迅雷下载过的东西，迅雷的服务器上都会缓存一份😨……。如果你用迅雷下载这个 `boot2docker.iso` 的话，很大的几率迅雷的缓存服务器上已经有了一份这个文件。因此如果存在，迅雷会直接从它的缓存服务器上帮你把这个文件下载下来，这样就避免了翻墙了。
+
+从上面的报错中，我们已经得知，需要下载的链接为：
+
+```bash
+https://github.com/boot2docker/boot2docker/releases/download/v17.06.2-ce/boot2docker.iso
+```
+
+将这个链接添加到你的迅雷下载任务中去，**注意：换成你的报错中的链接！！**。
+
+下载完成后，确保文件名为 `boot2docker.iso`，然后用 `shasum -a 256 boot2docker.iso` 校验一下文件的完整性，确保和[官网](https://github.com/boot2docker/boot2docker/releases)**对应的版本**一样后，再放置到报错中的那个位置：
+
+```bash
+/Users/jessie/.docker/machine/cache/boot2docker.iso
+```
+
+**注意：换成你的报错中的那个文件位置！！**
+
+手工下载好后，重新运行 Docker Quickstart Terminal，或者重新使用 `docker-machine` 创建 Virtualbox 虚拟机，一切就应该正常了。
+
+## 装完 Docker Toolbox 后发现下载镜像速度太慢，是不是需要修改什么配置文件？
+
+安装 Docker Toolbox 时，安装程序会使用 `docker-machine` 为你创建一个名为 `default` 的虚拟机：
+
+```bash
+docker-machine create -d virtualbox default
+```
+
+这个虚拟机没有加任何参数，因此对于拥有伟大的墙的国内网络来说，有些不方便使用。所以最简单的做法是在安装完 Docker Toolbox 后，删掉默认的虚拟机，然后重新创建该虚拟机，创建时加入有中国特色的配置。
+
+```bash
+docker-machine rm default
+
+docker-machine create -d virtualbox \
+     --engine-registry-mirror https://registry.docker-cn.com \
+     --engine-insecure-registry 192.168.99.0/24 \
+     --engine-storage-driver overlay2 \
+     default
+```
+
+> 删除 `default` 虚拟机的时候要注意，其中镜像、容器等内容都会被删除。
+
+## 如何在 Docker Toolbox 中创建的 `default` 虚拟机中添加`DOCKER_OPTS`之类的配置？
+
+其实在最初创建该docker host时，就可以利用 `docker-machine` 指定引擎配置参数，如果不要紧，可以直接rm掉这个虚拟机，重新建立。
+
+如果不方便 rm 掉这个虚拟机，可以 `docker-machine ssh` 进入这个虚拟机，然后修改 `/var/lib/boot2docker/profile` 文件，修改里面的 `EXTRA_ARGS` 参数即可。
+
+## 为什么我安装好的Docker没有`docker-machine` 命令
+
+装好的docker默认没有`docker-machine`命令，它是用于操纵虚拟机的命令，一般配合`Virtual Box`使用。
+
+## `docker-machine` 创建的主机怎么直接 `ssh` 进去？改了 `root` 密码好像也没用？
+
+`docker-machine` 创建的主机，会遵循安全最佳实践，因此一般不会允许 `root` 登录，而且一般不会允许密码登录，只允许`密钥`登录（也就是很多国内文章称为的免密登录，其实并非免密）。
+
+因此，使用密钥 `~/.docker/machine/machines/<机器名>/id_rsa` 登录即可。
+
+```bash
+ssh -i ~/.docker/machine/machines/default/id_rsa \
+    -o UserKnownHostsFile=/dev/null \
+    -o StrictHostKeyChecking=no \
+    docker@$(docker-machine ip default)
+```
+
+这个例子中连接的是 `default` 这个机器，需要连接其它的机器换成别的即可。另外的两个 `-o` 的参数是让其不要校验服务器密钥，这当然是不安全的，不过这里只是试验的虚拟机，所以没关系。
+
+## `docker-machine` 使用 `-d generic` 时，指定用户 `--generic-ssh-user` 后发现要 `sudo` 密码，结果报错退出，这是怎么回事？
+
+你应该再仔细看看 `generic` 的官方文档：<https://docs.docker.com/machine/drivers/generic/#/sudo-privileges>
+
+里面说的很清楚，默认用户是 `root`，但如果通过 `--generic-ssh-user` 指定其它用户的话，该用户必须拥有无密码`sudo`的能力，换句话说，就是在 `sudoers` 文件中对该用户配置 `NOPASSWD`。
+
+# Docker Registry 相关问题 `(10)`
+
+## 我 `docker push` 的时候怎么报 `authentication required` 错误？
+
+因为你没有登录。如果是向 Docker Hub 推送镜像，需要在注册一个用户： <https://hub.docker.com/>
+
+## 为什么我 `docker login` 失败了？我注册用户了，在网站登录也没问题呀？
+
+```bash
+$ docker login
+Login with your Docker ID to push and pull images from Docker Hub. If you don't have a Docker ID, 
+head over to https://hub.docker.com to create one.
+Username: pinkman@heisenb.org
+Password:
+Error response from daemon: Get https://registry-1.docker.io/v2/: unauthorized: incorrect username or password
+```
+
+呃，这里应该是**用户名**的，怎么写了个**电子邮件** `pinkman@heisenb.org` 呢？虽然 [Docker Hub 网站](https://hub.docker.com)允许你使用用户名或电子邮件登录，但是 `docker login` 只可以使用用户名，换成你的用户名登录就好了。
+
+## 我注册用户 `pinkman` 了，怎么还是无法 `docker push mrwhite/xxx` 啊？
+
+😒……因为你 `push` 到别人（**mrwhite**）的 `repo` 了，你只能 `push` 到 `pinkman/xxx` 下。
+
+## 不管用啊，我这回 `docker push pinkman/xxx` 了，怎么告诉我镜像不存在啊？
+
+😓……因为你没有 `tag` 对应的镜像为 `pinkman/xxx`。
+
+所有这些问题，都是由于你没有去看文档，建议不要这么一次次的瞎撞，去看官网文档：
+
+<https://docs.docker.com/get-started/>
+
+## `docker push` 到私有 `registry` 总是不成功，怎么办？
+
+如果在报错中看到了 `https`，那很可能是因为 `registry` 没有配置证书。
+
+很多人最开始配置 `registry` 的时候，为了简单而没有配置 `TLS` 证书。
+
+这是**不安全**的做法，在 Docker 中**不推荐**使用。因此，刻意的增加了使用这种不安全 `registry` 的复杂度。使用者必须在 `dockerd` 配置中，明确声明要使用这些不安全的 `registry`。
+
+比如，在 [Ubuntu 16.04](http://www.ubuntu.com/download/server) 中，编辑 `/etc/systemd/system/multi-user.target.wants/docker.service` 中的 `ExecStart=` 的结尾，加入 `--insecure-registry=192.168.99.100:5000`，将 `192.168.99.100:5000` 替换成你的 `registry` 地址。如果有很多 `registry`，可以设置多组。或者如果虚拟机的 `IP` 总是变化，也可以使用 `CIDR` 的形式，比如 `--insecure-registry=192.168.99.0/24`。
+
+不过测试过后，一定要[配上 TLS 证书](https://docs.docker.com/registry/deploying/#/get-a-certificate)。现在 [Let's Encrpyt](https://letsencrypt.org/getting-started/) 已经支持 `DNS` 认证了，不需要暴露内部的机器于公网，用其[脚本](https://certbot.eff.org/)自动取得免费证书是很方便的。
+
+## 我 `docker push` 了很多镜像到私有的 `registry` 上，怎么才能查看上面都有啥？或者搜索？
+
+两种办法，一种是使用 Registry V2 API。可以列出所有镜像：
+
+```bash
+curl http://<私有registry地址>/v2/_catalog
+```
+
+如果私有 Registry 尚支持 V1 API（**已经废弃**），可以使用 `docker search`
+
+```bash
+docker search <私有registry地址>/<关键字>
+```
+
+## `docker search` 为什么没有办法在私有 `Registry` 中用？
+
+`docker search` 命令所使用的 `API` 是 `/search`，而这是已经废弃的 Registry `v1` 的 API，目前的 Registry 都已经是 `v2` API了，早就不支持 `v1` API 了，所以自然用不了。而 `v2` 的 API 中只有列表 `/_catalogs` API，没有同等的 `search` API。所以事实上 `docker search` 命令已经废弃了。
+
+另外，`docker search` 功能太过局限，其实并不实用。远不如直接去 [Docker Hub 网站](https://hub.docker.com/explore/) 搜索。Docker Hub 网站上，可以搜索查找镜像，找到后还可以看对应的**标签**、镜像**使用文档**、每个镜像的 `Dockerfile`、**安全扫描结果**等等。
+
+如果只使用开源的 `docker registry` 自建仓库的话，目前只能用 `API` 访问其内容。除此以外，官方还有商业版的 `Docker Trusted Registry` 项目，里面有一些增值的内容在里面，提供了类似于 Docker Hub 似得 UI 等，可以搜索过滤。目前 Docker Trusted Registry 属于 [Docker Datacenter](https://www.docker.com/products/docker-datacenter) 的一部分。
+
+另外，第三方也有一些提供了UI的。比如 [VMWare Harbor](https://github.com/vmware/harbor)。VMWare Harbor 是 VMWare 中国基于开源 docker registry 进一步开发的项目，有更复杂的上层逻辑。包括用户管理、镜像管理、Registry集群之类的功能。Harbor 是开源的，免费的。
+
+第三方的 registry 还有 Java 世界里常见的 Nexus，其[第三代](https://github.com/sonatype/docker-nexus3)支持 Docker Registry API。
+
+## 如何删除私有 `registry` 中的镜像？
+
+首先，在默认情况下，docker registry 是不允许删除镜像的，需要在配置`config.yml`中启用：
+
+```yaml
+delete:
+    enabled: true
+```
+
+然后，使用 API `GET /v2/<镜像名>/manifests/<tag>` 来取得要删除的`镜像:Tag`所对应的 `digest`。
+
+Registry `2.3` 以后，必须加入头 `Accept: application/vnd.docker.distribution.manifest.v2+json`，否则取到的 `digest` 是错误的，这是为了防止误删除。
+
+比如，要删除 `myimage:latest` 镜像，那么取得 `digest` 的命令是：
+
+```bash
+$ curl --header "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+  -I -X HEAD http://192.168.99.100:5000/v2/myimage/manifests/latest \
+  | grep Digest
+Docker-Content-Digest: sha256:3a07b4e06c73b2e3924008270c7f3c3c6e3f70d4dbb814ad8bff2697123ca33c
+```
+
+然后调用 API `DELETE /v2/<镜像名>/manifests/<digest>` 来删除镜像。比如：
+
+```bash
+curl  -X DELETE http://192.168.99.100:5000/v2/myimage/manifests/sha256:3a07b4e06c73b2e3924008270c7f3c3c6e3f70d4dbb814ad8bff2697123ca33c
+```
+
+至此，镜像已从 `registry` 中标记删除，外界访问 `pull` 不到了。但是 `registry` 的本地空间并未释放，需要等待垃圾收集才会释放。而垃圾收集不可以在线进行，必须停止 `registry`，然后执行。比如，假设 `registry` 是用 Compose 运行的，那么下面命令用来垃圾收集：
+
+```bash
+docker-compose stop
+docker run -it --name gc --rm --volumes-from registry_registry_1 registry:2 garbage-collect /etc/registry/config.yml
+docker-compose start
+```
+
+其中 `registry_registry_1` 可以替换为实际的 `registry` 的容器名，而 `/etc/registry/config.yml` 则替换为实际的 `registry` 配置文件路径。
+
+参考官网文档：
+
+<https://docs.docker.com/registry/configuration/#/delete>
+
+<https://docs.docker.com/registry/spec/api/#/deleting-an-image>
+
+## 使用国内镜像还是慢，公司内好多 docker 主机，都需要去重复下载镜像，咋办？
+
+在局域网内，本地架设个 Docker Registry mirror，作为缓存即可。
+
+建立一个空目录，并且添加 Registry 的配置文件 `config.yml`，其内容为：
+
+```yaml
+version: 0.1
+log:
+    fields:
+        service: registry
+storage:
+    cache:
+        blobdescriptor: inmemory
+    filesystem:
+        rootdirectory: /var/lib/registry
+http:
+    addr: :5000
+    headers:
+        X-Content-Type-Options: [nosniff]
+health:
+    storagedriver:
+        enabled: true
+        interval: 10s
+        threshold: 3
+proxy:
+    remoteurl: https://registry.docker-cn.com
+```
+
+> 注意这里的 `remoteurl`，其地址可以填写任意一个国内镜像加速器的地址，这里使用的是 Docker 官方在中国的镜像站点。如果在国外的话，可以使用 Docker Hub 的官方地址：`https://registry-1.docker.io`。
+
+然后，建立个 `docker-compose.yml` 文件方便启动这个服务：
+
+```yml
+version: '2'
+services:
+    mirror:
+        image: registry:2
+        ports:
+            - "5000:5000"
+        volumes:
+            - ./config.yml:/etc/docker/registry/config.yml
+```
+
+然后用 Docker Compose 启动这个镜像服务：`docker-compose up -d`
+
+然后在局域网中的所有 Docker 主机中的 Docker 引擎配置中，都添加一条 `--registry-mirror=<这个镜像服务器的地址>`
+
+首先用 `docker pull` 下载一个本地不存在的镜像，看一下时间：
+
+```bash
+$ time docker pull php:7-fpm-alpine
+7-fpm-alpine: Pulling from library/php
+e110a4a17941: Pull complete
+d9f63633faf6: Pull complete
+ac309a5bc5d5: Pull complete
+4523ec888a62: Pull complete
+6a77f79ab9b5: Pull complete
+27243562b67c: Pull complete
+33e1803456c2: Pull complete
+a1219b0a1418: Pull complete
+Digest: sha256:f7d6f6844df64f8f615fa50ca28b3f1ad82be0a2dcde0b55205d31c1bb9f4820
+Status: Downloaded newer image for php:7-fpm-alpine
+docker pull php:7-fpm-alpine  0.07s user 0.07s system 0% cpu 2:30.43 total
+```
+
+上面我们下载了 php:7-fpm-alpine，用时 2 分 30秒，然后我们删掉镜像：
+
+```bash
+$ docker rmi php:7-fpm-alpine
+Untagged: php:7-fpm-alpine
+Deleted: sha256:b80ca1f4f99d13e00ac6ef13aca7c1ef6e2fb83ec2fe6a035e8beeeb05afb4b6
+Deleted: sha256:69ee0f31988504dc3e3b068476f11d06b43fc34465a1c58d351406b9d2368e7a
+...
+```
+
+然后重新下载镜像，测试时间：
+
+```bash
+$ time docker pull php:7-fpm-alpine
+7-fpm-alpine: Pulling from library/php
+e110a4a17941: Pull complete
+d9f63633faf6: Pull complete
+ac309a5bc5d5: Pull complete
+4523ec888a62: Pull complete
+6a77f79ab9b5: Pull complete
+27243562b67c: Pull complete
+33e1803456c2: Pull complete
+a1219b0a1418: Pull complete
+Digest: sha256:f7d6f6844df64f8f615fa50ca28b3f1ad82be0a2dcde0b55205d31c1bb9f4820
+Status: Downloaded newer image for php:7-fpm-alpine
+docker pull php:7-fpm-alpine  0.05s user 0.04s system 0% cpu 13.778 total
+```
+
+这次由于该 docker image 本地 mirror 缓存了，所以用时约14秒，速度大大提高了。
+
+参考官网文档：
+
+服务端：<https://docs.docker.com/registry/configuration/#/proxy>
+
+客户端：<https://docs.docker.com/engine/reference/commandline/dockerd/>
+
+## 自己架的 `registry` 怎么任何用户都可以取到镜像？这不安全啊？
+
+那是因为没有加认证，不加认证的意思就是允许任何人访问的。
+
+添加认证有两种方式：
+
+* Registry 配置中加入认证： <https://docs.docker.com/registry/configuration/#/auth>
+
+```yaml
+auth:
+  token:
+    realm: token-realm
+    service: token-service
+    issuer: registry-token-issuer
+    rootcertbundle: /root/certs/bundle
+  htpasswd:
+    realm: basic-realm
+    path: /path/to/htpasswd
+```
+
+* 前端架设 nginx 进行认证：<https://docs.docker.com/registry/recipes/nginx/>
+
+```js
+location /v2/ {
+    ...
+    auth_basic "Registry realm";
+    auth_basic_user_file /etc/nginx/conf.d/nginx.htpasswd;
+    ...
+}
+```
+
+# 系统相关问题 `(7)`
+
+## CentOS/RHEL 红帽系统特有问题
+
+### 在 CentOS 6 上安装后怎么最高只有 Docker 1.7 这个版本？
+
+Docker 已经不再支持 CentOS 6 了，现在看到的是很久以前的老版本，之后再也没有发布过 CentOS 6 的版本。
+
+所以不要再在 CentOS 6上用 Docker 了。换 CentOS 7 或者 Ubuntu 吧。
+
+### 挂载宿主目录，结果 `Permission denied`，没权限
+
+原因是 `CentOS`/`RHEL`中的 `SELinux` 限制了目录权限。需要添加规则。
+
+下面是 `man docker-run` 的解释：
+
+```
+When  using  SELinux,  be  aware that the host has no knowledge of container
+SELinux policy. Therefore, in the above example, if SELinux policy  is enforced,
+the /var/db directory is not  writable to the container. A "Permission Denied"
+message will occur and an avc: message in the host's syslog.
+
+To  work  around  this, at time of writing this man page, the following command
+needs to be run in order for the  proper  SELinux  policy  type label to be
+attached to the host directory:
+```
+
+因此需要对特定目录添加规则
+
+```bash
+$ chcon -Rt svirt_sandbox_file_t /var/db
+```
+
+参考：<http://www.projectatomic.io/blog/2015/06/using-volumes-with-docker-can-cause-problems-with-selinux/>
+
+### Docker的 `/var/lib/docker/devicemapper` 占用空间不断增长, 怎么破？
+
+这类问题一般是 CentOS/RHEL 红帽系的问题，CentOS 这类红帽系统中，由于不像 `Ubuntu` 那样有成熟的 Union FS实现(如`aufs`)，所以只能使用 `devicemapper`，而默认使用的是`lvm-loop`，也就是用一个稀疏文件来当成一个块设备，给`devicemapper`用，作为Docker镜像容器文件系统。这是非常不推荐使用的，性能很差不说，不稳定，还有很多 bug，如果没办法换 `Ubuntu`/`Debian` 系统，那么最起码应该建立块设备（分区、卷）给 `devicemapper` 用。
+
+参考官网文档：<https://docs.docker.com/engine/userguide/storagedriver/device-mapper-driver/#configure-direct-lvm-mode-for-production>
+
+严格来说 CentOS/RHEL 7 中实际上有一个 Union FS 实现，虽然 CentOS/RHEL 7 的内核是 3.10，不过红帽从 Linux 3.18 backport 回来了 `overlay` fs 的驱动。但是，红帽自己都在官方的发布声明中说能不要用就不用。
+
+<https://access.redhat.com/documentation/en-US/Red_Hat_Enterprise_Linux/7/html/7.2_Release_Notes/technology-preview-file_systems.html>
+
+### CentOS 7 的内核太老了 3.10，是不是很多 Docker 功能不支持？
+
+是的，有一些功能无法支持，比如 `overlay2` 的存储驱动就无法在 CentOS 上使用，但并非所有需要高版本内核的功能都不支持。
+
+比如 Overlay FS 需要 Linux 3.18，而 Overlay network 需要 Linux 3.16。而 CentOS 7 内核为 3.10，确实低于这些版本需求。但实际上，红帽团队会把一些新内核的功能 backport 回老的内核。比如 `overlay fs`等。所以一些功能依旧会支持。因此 CentOS 7 的 Docker Engine 同样可以支持 `overlay network`，以及 `overlay` 存储驱动（不是`overlay2`）。因此在新的 Docker 1.12 中，CentOS/RHEL 7 才有可能支持 Swarm Mode。
+
+即使红帽会把一些高版本内核的功能 backport 回 3.10 内核中，这种修修补补出来的功能，并不一定稳定。如果观察 Docker Issue 列表，会发现大量的由于 CentOS 老内核导致的问题，特别是在使用了 1.12 内置的 Swarm Mode 集群功能后，存储、网络出现的问题很多。
+
+所以依旧建议使用其它维护内核版本升级的 Linux 发行版，如 Ubuntu。
+
+### CentOS 7/RHEL 7 升级 1.12 后，无法启动，怎么回事？
+
+一些人在升级之后，启动 Docker 时发现无法启动，而在报错中看到：
+
+```bash
+Unit docker.socket failed to load: No such file or directory.
+```
+
+其原因是由于从 `1.12` 开始，不需要在 `systemd` 中写个 `docker.socket` 文件了，所以这个文件就随升级而删除了。而 `docker.service` 由于被修改过（或别的什么原因），导致 `yum` 升级的时候没有替换这个文件。于是出现了旧的 `docker.service` 中配置要求有 `docker.socket` 文件，而这个文件已经在新的版本中删除了，所以导致启动错误。
+
+解决办法很简单，直接打开 `docker.service`，将其参照 `1.12` 的默认配置文件修改即可。寻找到 `Required=docker.socket` 那行，删掉。然后寻找到 `docker daemon`(或者 `dockerd`) 那行，将其后的 `-H fd://` 删掉。并且进一步将 `docker daemon` 改为 `dockerd`，因为从 `1.12` 开始改名叫这个了。保存退出重启服务即可。
+
+## Mac / Windows 相关问题
+
+### 为什么在`Mac`下挂载宿主目录`/usr/local/nginx`不成功？
+
+虽然 Docker 团队尽量让使用 [Docker Toolbox](https://www.docker.com/products/docker-toolbox), [Docker for Mac](https://docs.docker.com/docker-for-mac/) and [Docker for Windows](https://docs.docker.com/docker-for-windows) 的用户感觉操作 Docker 就像在 Linux 下一样，但实际上在 Mac/Windows 上并非是直接运行 Docker 的。中间经过了一个 Linux 虚拟机，而 Docker 运行在那个虚拟机里。
+
+因此 Mac 主机上的目录实际上并不是 Docker 眼中的宿主目录，为了让用户尽量感觉不到这个差异，`Boot2Docker` 或者 `Docker for Mac / Windows` 中，将一部分物理主机的目录映射到了 Linux 虚拟机中，这样其上 Docker 就可以访问到这些物理机的目录了。
+
+出于安全考虑，并不会把物理机的所有目录都映射到 Linux 虚拟机内。一般来说只有当前用户目录在内的一些目录会被映射到 Linux 虚拟机内，比如 `/Users`, `/Volumes` 等。
+
+对于 `Docker for Mac` 的用户，可以直接在配置界面 `File Sharing` 中添加额外的映射目录，但是，出于安全考虑，不添加额外映射，而使用当前用户目录下的目录，是更好地做法。
+
+### 听说 Windows 10、Windows Server 2016 内置 Docker 了？和 Docker 官网下载的 Docker for Windows 有什么区别啊？
+
+二者完全不同。
+
+Windows 10 或者 Windows Server 2016 自带的 Docker，被称为 `Docker on Windows`，其运行于 Windows NT 内核至上，以 Docker 类似的方式提供 Windows 容器服务，因此只可以运行 Windows 程序。
+
+而 Docker 官网下载的，被称为 `Docker for Windows`。这是我们常说的 Docker，它是运行于 Linux 内核上的 Docker。在 Windows 上运行时实际上是在 Hyper-V 上的一个 Alpine Linux 虚拟机上运行的 Docker。它只可以运行 Linux 程序。
+
+`Docker on Windows` 极为臃肿，最小镜像也近 GB，启动时间并不快；而 `Docker for Windows` 则是正常的 Docker，最小镜像也就几十 KB，一般的镜像都在几百兆以内，而且启动时间基本是毫秒级。
+
+希望对 `Docker on Windows` 有所了解的童鞋可以看一下一个 DockerCon 的视频，是由微软负责 Docker 项目的构架师进行的介绍，从中可以看到第一手的信息，Windows 到底有多惨。这个视频我做了笔记，可以到这里看一下：</post/docker-2016-08-12-video-windows-server-and-docker.html>
+
+# 其它问题 `(1)`
+
+## `Kubernetes` 这词咋念啊？为啥有人管它叫 `k8s` ？
+
+Kubernetes 的发音：`koo-ber-nay'-tace` ，（如果非用中文拼凑的话，大概是`“酷-博-内-忒丝”`），这词来自希腊`舵手`这个词。
+但是经常有人念成：`koo-ber-net-ees`，（如果非用中文拼凑的话，大概是``“酷-博-耐-替”``）。也有人犯懒经常是念成 `k8s`，也就是 `k-eights`。
+
+<http://www.biblestudytools.com/lexicons/greek/nas/kubernetes.html>
+
+至于为啥叫 `k8s`，是因为发音接近么？……好吧，实话说了吧，是因为犯懒，数数 `k` 和 `s` 中间多少个字母？8 个吧，这个 8 的意思就是省略 8 个字母，懒得敲了…… 其实这类用法很多，比如 `i18n` (`internationalization`), `l11n` (`localization`) 等等，老外也懒得打字啊。
