@@ -1,8 +1,8 @@
-
 ---
 title:  Binary tree  of Data Structure
 date: 2017-12-12 22:43:22
 tags: Data Structure
+mathjax: true
 ---
 
 ## 树与二叉树
@@ -16,7 +16,7 @@ tags: Data Structure
 `节点层次`从树根开始定义，根节点为第一层，他的子节点为第二层，以此类推。  
 
 `节点深度`是从根节点开始从顶向下逐层累加。  
- 
+
 `节点高度`是从叶子节点开始从底向上逐层累加。  
 
 `树的高度`（又称深度）是从树中节点的最大层数。
@@ -39,7 +39,7 @@ tags: Data Structure
 - 度为2的树的孩子节点的左右次序是相对而言的，而二叉树的左右孩子节点是确定的。
 
 ### 特殊的二叉树  
-  
+
 
 #### 1) 满二叉树 
 一颗高度为n，并且有$2^h-1$个节点的二叉树称为满二叉树。
@@ -51,7 +51,7 @@ tags: Data Structure
 - 非空二叉树是的叶子节点个数等于度为2的节点树加1,即$N_0=N_2+1$
 - 非空二叉树是第K层上至多有$2^{k-1}$个节点
 - 高度为H的二叉树至多有$2^H-1$个节点（$H\geq 1$）
-- 节点i的双亲编号为$\left \lfloor i/2 \right \rfloor$，左右孩子的编号为2i,2i+1
+- 满二叉树中，节点i的双亲编号为$\left \lfloor i/2 \right \rfloor$，左右孩子的编号为2i,2i+1
 - 节点i所在层次（深度）为$\left \lfloor log_2i \right \rfloor+1$
 - 具有N个节点的完全二叉树的高度为$\left \lceil log_2(N+1) \right \rceil$ 或者 $\left \lfloor log_2N \right \rfloor+1$
 
@@ -60,9 +60,8 @@ tags: Data Structure
 根据二叉树的性质，完全二叉树和满二叉树采用顺序存储合适，但是其他二叉树采用顺序存储会有很多空节点，浪费存储空间，因此一般的二叉树采用链式存储。
 
 节点结构：
-|lchilld|data|rchild|
-|--:|---|--:|
 
+| lchilld | data | rchild |
 
 ```c
 //获取二叉树高度
@@ -132,16 +131,16 @@ void PreOrder(BiTree T){
 //中序遍历
 void InOrder(BiTree T){
     if(T!=NULL){
-        PreOrder(T->lchild);
+        InOrder(T->lchild);
         visit(T);
-        PreOrder(T->rchild);
+        InOrder(T->rchild);
     }
 }
 //后序遍历
 void PostOrder(BiTree T){
     if(T!=NULL){
-        PreOrder(T->lchild);
-        PreOrder(T->rchild);
+        PostOrder(T->lchild);
+        PostOrder(T->rchild);
         visit(T);
     }
 }
@@ -164,7 +163,7 @@ void LevelOrder(BiTree T){
         return ;
     }
     for(i=1;i<depth;i++){ //循环输出一层，二层，...，直到结束
-        LevelNodeOrder(T,i);
+        LevelNode(T,i);
     }
 }
 ```
@@ -185,7 +184,7 @@ void PreOrder(BiTree T){
         }
         if(!IsEmpty(S)){
             Pop(S,p);
-            p->rchild;
+            p=p->rchild;
         }
     }
 }
@@ -257,18 +256,19 @@ void LevelOrder(BiTree T){
 
 ### 树和森林的遍历对应关系
 
-|树|森林|二叉树|
-|--:|--:|--:|
-|先根遍历|先序遍历|先序遍历|
-|后根遍历|中序遍历|中序遍历|
-
+---------------------------------
+| 树       |   森林   | 二叉树   |
+| -------: | ------:  | -------: |
+| 先根遍历 | 先序遍历 | 先序遍历 |
+| 后根遍历 | 中序遍历 | 中序遍历 |
+----------------------------------
 
 ### 线索二叉树
 将遍历结果的前后驱关系存入二叉树中，二叉树中存在很多空指针，利用这些空指针用来存取二叉树遍历的前驱和后驱
 
 节点结构：
-|ltag|lchild|data|rchild|rtag|
-|--:|--:|--:|--:|--:|
+
+| ltag | lchild | data | rchild | rtag |
 
 这里举个例子：
 中序线索化二叉树
@@ -381,23 +381,37 @@ int Insert (BiTree T,ElemType key){
 - RL旋转：在节点A的右孩子的左子树插入新节点
 
 #### AVL树的查找
-假设以$ N_h $表示深度为h的平衡树中含有的最少的节点树，则：
-$ N_0 = 0 , N_1 = 1 , N_2 =2 $
-并且满足: $ N_h = N_{h-1} + N_{h-2}+1 $
+假设以  $$ N_h $$  表示深度为h的平衡树中含有的最少的节点树，则：
+
+$N_0 = 0 , N_1 = 1 , N_2 =2$
+
+并且满足: 
+
+
+
+$N_h = N_{h-1} + N_{h-2}+1$
+
 
 
 ### B树
+
 B树又称多路平衡查找树，B树中所有的节点的孩子节点树的最大值称为B树的阶，通常使用m表示。
 一棵m阶B树或为空树或为满足下面条件的树：
 - 树中的每个节点至多有m棵子树，至多含有m-1个关键字
 - 如果节点不是终端节点，那么至少有两颗树，至少一个关键字
-- 除了根节点外的非叶子节点至少含有$ \left \lceil m/2  \right \rceil $  棵子树，至少含有$ \left \lceil m/2 \right \rceil - 1 $ 个关键字
+- 除了根节点外的非叶子节点至少含有
+  $\left \lceil m/2  \right \rceil$  棵子树
+- 至少含有
+  $\left \lceil m/2 \right \rceil-1$ 个关键字
 - 所有叶子节点都在同一层，而且实际上这些节点不存在
 - B树的所有节点的平衡因子都为0
 #### B树的高度（磁盘存取次数）
 B树的大部分操作所需的存盘次数跟B树的高度成正比
 对于关键字个数为n的B树，叶子节点即查找不成功的节点为n+1
-因此$ h \leq log_{ \left \lceil m/2  \right \rceil}(n+1)/2+1 $
+因此
+
+$log_{m}(n+1) \leq h \leq log_{ \left \lceil m/2  \right \rceil}(n+1)/2+1$
+
 #### B树的插入与删除
 插入先定位插入位置，如果节点不满则插入，如果节点已满，则分裂节点，插入。
 删除分三个情况：
