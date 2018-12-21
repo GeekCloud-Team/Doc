@@ -4,9 +4,13 @@ date: 2018-11-27 09:01:09
 tags: [高可用, 翻译, 集群]
 ---
 
-翻译自[The Linux-HA User’s Guide](http://www.linux-ha.org/doc/users-guide/users-guide.html)
-
-只翻译了有用部分，未翻译获取帮助部分。不确定的地方会保留原文，且并非完全参照原文，会有改动。
+> 译者：[serchaofan](https://github.com/serchaofan)
+>
+> 翻译主要借助翻译工具，并进行校对。
+>
+> 翻译自[The Linux-HA User’s Guide](http://www.linux-ha.org/doc/users-guide/users-guide.html)
+>
+> 只翻译了有用部分，未翻译获取帮助部分。不确定的地方会保留原文，且并非完全参照原文，会有改动。
 
 <!--more-->
 
